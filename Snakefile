@@ -19,9 +19,7 @@ class checkpoint_accessions_to_genus:
         with open(genus_csv, 'rt') as fp:
            r = csv.DictReader(fp)
            for row in r:
-               print(row)
                accession = row['accession'].split(' ')[0]
-               print(accession)
                genome_accessions.append(accession)
 
         return genome_accessions
@@ -42,7 +40,7 @@ ACCESSION = metadata['accession'].unique().tolist()
 
 rule all:
     input:
-        expand("outputs/genus_pangenome_clustered/{genus}_clustered_cds.fna", genus = GENUS)
+        expand("outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta", genus = GENUS)
 
 ###################################################
 ## download references
@@ -89,11 +87,12 @@ rule build_genus_pangenome:
     0.9 https://www.pnas.org/doi/abs/10.1073/pnas.2009974118
     '''
     input: "outputs/genus_pangenome_raw/{genus}_cds.fna"
-    output: "outputs/genus_pangenome_clustered/{genus}_clustered_cds.fna"
-    conda: "envs/cdhit.yml"
+    output: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
+    conda: "envs/mmseqs2.yml"
     benchmark:"benchmarks/genus_pangenome/{genus}.tsv"
+    params: outprefix = lambda wildcards: "outputs/genus_pangenome_clustered/" + wildcards.genus + "_cds"
     shell:'''
-    cd-hit-est -c .9 -d 0 -i {input} -o {output}
+    mmseqs easy-cluster {input} {params.outprefix} tmp_mmseqs2 --min-seq-id 0.9
     '''
 
 ###################################################
