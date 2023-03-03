@@ -3,4 +3,4 @@ channels:
    - bioconda
    - defaults
 dependencies:
-   - cd-hit=4.8.1
+   - bbmap=39.01
