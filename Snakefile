@@ -69,7 +69,7 @@ rule shorten_gene_names_for_codonw:
     The following code parses the FASTA headers so they end up as the protein ids.
     This also matches annotations in the GFF file.
     * awk '{print $1;next}1' removes everything after the first space
-    * sed 's|\(.*\)_.*|\1|' removes the last underscore and everything after it
+    * sed 's/_[^_]*$//' removes the last underscore and everything after it
     * sed 's/^\([^_]*\(_[^_]*\)\{1\}\)_/>/' removes everything before and including the second underscore and replaces with ">"
     double curly braces escape snakemake and are parsed as single curly braces in the shell command
     '''
@@ -77,7 +77,7 @@ rule shorten_gene_names_for_codonw:
     output: "outputs/genbank/{accession}_cds_from_genomic.fna"
     benchmark: "benchmarks/shorten_gene_names/{accession}.tsv"
     shell:'''
-    gunzip {input} | awk '{{print $1;next}}1' | sed 's|\(.*\)_.*|\1|' | sed 's/^\([^_]*\(_[^_]*\)\{{1\}}\)_/>/' > {output}
+    gunzip -c {input} | awk '{{print $1;next}}1' | sed 's/_[^_]*$//' | sed 's/^\([^_]*\(_[^_]*\)\{{1\}}\)_/>/' > {output}
     '''
 
 ###################################################
@@ -96,7 +96,7 @@ rule combine_cds_per_genus:
     output: "outputs/genus_pangenome_raw/{genus}_cds.fna"
     benchmark: "benchmarks/combine_cds_per_genus/{genus}.tsv"
     shell:'''
-    cat {input} | gunzip > {output}
+    cat {input} > {output}
     '''
 
 rule build_genus_pangenome:
