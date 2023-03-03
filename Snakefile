@@ -36,11 +36,13 @@ metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", heade
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
-ACCESSION = metadata['accession'].unique().tolist()
+#ACCESSION = metadata['accession'].unique().tolist()
 
 rule all:
     input:
-        expand("outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta", genus = GENUS)
+        expand("outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta", genus = GENUS),
+        expand("outputs/compositional_scans_codonw/{genus}_indices.txt", genus = GENUS),
+        expand("outputs/compositional_scans_bbmap/{genus}_tetramerfreq.tsv", genus = GENUS)
 
 ###################################################
 ## download references
@@ -60,6 +62,24 @@ rule download_reference_genomes:
     mv {params.outdir}{wildcards.accession}*_genomic.gff.gz {output.gff}
     '''
 
+rule shorten_gene_names_for_codonw:
+    '''
+    codonw truncates multifasta names (output at 25 characters, bulk output at 20 characters).
+    The protein names should be unique identifiers.
+    The following code parses the FASTA headers so they end up as the protein ids.
+    This also matches annotations in the GFF file.
+    * awk '{print $1;next}1' removes everything after the first space
+    * sed 's|\(.*\)_.*|\1|' removes the last underscore and everything after it
+    * sed 's/^\([^_]*\(_[^_]*\)\{1\}\)_/>/' removes everything before and including the second underscore and replaces with ">"
+    double curly braces escape snakemake and are parsed as single curly braces in the shell command
+    '''
+    input: "inputs/genbank/{accession}_cds_from_genomic.fna.gz"
+    output: "outputs/genbank/{accession}_cds_from_genomic.fna"
+    benchmark: "benchmarks/shorten_gene_names/{accession}.tsv"
+    shell:'''
+    gunzip {input} | awk '{{print $1;next}}1' | sed 's|\(.*\)_.*|\1|' | sed 's/^\([^_]*\(_[^_]*\)\{{1\}}\)_/>/' > {output}
+    '''
+
 ###################################################
 ## generate pangenome
 ###################################################
@@ -72,7 +92,7 @@ checkpoint accessions_to_genus:
     script: "scripts/accessions_to_genus.R"
 
 rule combine_cds_per_genus:
-    input: checkpoint_accessions_to_genus('inputs/genbank/{accession}_cds_from_genomic.fna.gz')
+    input: checkpoint_accessions_to_genus('outputs/genbank/{accession}_cds_from_genomic.fna')
     output: "outputs/genus_pangenome_raw/{genus}_cds.fna"
     benchmark: "benchmarks/combine_cds_per_genus/{genus}.tsv"
     shell:'''
@@ -98,6 +118,27 @@ rule build_genus_pangenome:
 ###################################################
 ## DNA compositional screen
 ###################################################
+
+rule compositional_scans_codonw:
+    input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
+    output: 
+        indices="outputs/compositional_scans_codonw/{genus}_indices.txt",
+        bulk='outputs/compositional_scans_codonw/{genus}_rauu.txt'
+    conda: "envs/codonw.yml"
+    benchmark: "benchmarks/compositional_scans_codonw/{genus}.tsv"
+    shell:'''
+    codonw {input} {output.indices} {output.bulk} -all_indices -nomenu -machine -silent -raau
+    '''
+
+rule compositional_scans_bbmap:
+    input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
+    output: "outputs/compositional_scans_bbmap/{genus}_tetramerfreq.tsv"
+    conda: "envs/bbmap.yml"
+    benchmark: "benchmarks/compositional_scans_bbmap/{genus}.tsv"
+    shell:'''
+    tetramerfreq.sh in={input} out={output} w=0 short=T k=4
+    '''
+
 
 ###################################################
 ## BLASTP (diamond) against clustered nr
