@@ -1,0 +1,7 @@
+channels:
+   - conda-forge
+   - bioconda
+   - defaults
+dependencies:
+   - snakemake-minimal=7.16.0
+   - pandas=1.5.0
