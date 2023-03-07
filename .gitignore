@@ -1,0 +1,7 @@
+.DS_Store
+.Snakefile.swp
+.snakemake/
+*/.ipynb/
+benchmarks/
+outputs/
+notebooks/.ipynb_checkpoints/
