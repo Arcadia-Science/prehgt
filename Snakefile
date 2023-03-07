@@ -32,10 +32,11 @@ class checkpoint_accessions_to_genus:
         return p
 
 
-metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
+metadata = pd.read_csv("inputs/spomb_pos_control.tsv", header = 0, sep = "\t")
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
+print(GENUS)
 #ACCESSION = metadata['accession'].unique().tolist()
 
 rule all:
@@ -77,7 +78,7 @@ rule shorten_gene_names_for_codonw:
     output: "outputs/genbank/{accession}_cds_from_genomic.fna"
     benchmark: "benchmarks/shorten_gene_names/{accession}.tsv"
     shell:'''
-    gunzip -c {input} | awk '{{print $1;next}}1' | sed 's/_[^_]*$//' | sed 's/^\([^_]*\(_[^_]*\)\{{1\}}\)_/>/' > {output}
+    gunzip -c {input} | awk '{{print $1;next}}1' | sed 's/lcl|//g' | sed 's/_cds//g' > {output}
     '''
 
 ###################################################
@@ -85,7 +86,7 @@ rule shorten_gene_names_for_codonw:
 ###################################################
 
 checkpoint accessions_to_genus:
-    input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
+    input: metadata="inputs/spomb_pos_control.tsv"
     output: genus="outputs/accessions_to_genus/{genus}.csv",
     conda: "envs/tidyverse.yml"
     benchmark: "benchmarks/accessions_to_genus/{genus}.tsv"
