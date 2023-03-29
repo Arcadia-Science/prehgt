@@ -70,15 +70,16 @@ rule shorten_gene_names_for_codonw:
     The following code parses the FASTA headers so they end up as the protein ids.
     This also matches annotations in the GFF file.
     * awk '{print $1;next}1' removes everything after the first space
-    * sed 's/_[^_]*$//' removes the last underscore and everything after it
-    * sed 's/^\([^_]*\(_[^_]*\)\{1\}\)_/>/' removes everything before and including the second underscore and replaces with ">"
+    * sed 's/lcl|//g' removes the prefix lcl|
+    * sed 's/_cds//g' removes the string _cds if it exists in the header
+    * cut -d_ -f1,2 removes the second underscore and everything after it
     double curly braces escape snakemake and are parsed as single curly braces in the shell command
     '''
     input: "inputs/genbank/{accession}_cds_from_genomic.fna.gz"
     output: "outputs/genbank/{accession}_cds_from_genomic.fna"
     benchmark: "benchmarks/shorten_gene_names/{accession}.tsv"
     shell:'''
-    gunzip -c {input} | awk '{{print $1;next}}1' | sed 's/lcl|//g' | sed 's/_cds//g' > {output}
+    gunzip -c {input} | awk '{{print $1;next}}1' | sed 's/lcl|//g' | sed 's/_cds//g' | cut -d_ -f1,2 > {output}
     '''
 
 ###################################################
