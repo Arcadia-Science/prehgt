@@ -141,11 +141,57 @@ rule compositional_scans_bbmap:
     tetramerfreq.sh in={input} out={output} w=0 short=T k=4
     '''
 
+rule compositional_scans_to_hgt_candidates:
+    input:
+        indices="outputs/compositional_scans_codonw/{genus}_indices.txt",
+        bulk='outputs/compositional_scans_codonw/{genus}_rauu.txt',
+        tetra="outputs/compositional_scans_bbmap/{genus}_tetramerfreq.tsv"
+    output: 
+        cds_lst="outputs/compositional_scans_hgt_candidates/{genus}_cds_list.txt",
+        # OTHER INFO
+    benchmark: "benchmarks/compositional_scans_to_hgt_candidates/{genus}.tsv"
+    conda: "envs/tidyverse.yml"
+    script: "scripts/compositional_scans_to_hgt_candidates.R"
 
 ###################################################
 ## BLASTP (diamond) against clustered nr
 ###################################################
 
+rule blastp_against_clustered_nr:
+    input:
+        db="inputs/nr_rep_seq.fasta.gz",
+        query="outputs/genus_pangenome_clusters/{genus}_cds_rep_seq.fasta"
+    output: "outputs/blast_diamond/{genus}_vs_clustered_nr.tsv"
+    conda: "envs/diamond.yml"
+    benchmark:
+    threads: 16
+    shell:'''
+    diamond blastp --db {input.db} --query {input.query} --out {output} --outfmt 6 --max-target-seqs 100 --threads {threads} --faster
+    '''
+
+rule blast_add_taxonomy_info:
+    input: 
+        tsv="outputs/blast_diamond/{genus}_vs_clustered_nr.tsv",
+        sqldb=""
+    output:
+    conda: "envs/r-sql.yml"
+    benchmark:
+    script: "scripts/...R"
+
+rule blast_to_hgt_candidates:
+    input:
+    output:
+    conda: "envs/tidyverse.yml"
+    benchmark:
+    script: "scripts/blast_to_hgt_candidates.R"
+
+
 ###################################################
 ## candidate characterization
 ###################################################
+
+rule combine_hgt_candidates:
+
+rule extract_hgt_candidates:
+
+rule eggnog_hgt_candidates:
