@@ -39,7 +39,7 @@ clusters <- clusters %>%
   filter(cluster %in% small_clusters$cluster)
 
 # write out a gene list to use extract CDS sequences of HGT candidates from FASTA
-write_tsv(clusters[1], snakemake@output[['gene_lst']])
+write_tsv(clusters[1], snakemake@output[['gene_lst']], col_names = F)
 # write out cluster membership file
 write_tsv(clusters, snakemake@output[['tsv']])
 
