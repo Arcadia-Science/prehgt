@@ -5,3 +5,7 @@
 benchmarks/
 outputs/
 notebooks/.ipynb_checkpoints/
+inputs/20230227_tax_list_full.RDS
+inputs/genbank/
+sandbox/
+tmp_mmseqs2/
