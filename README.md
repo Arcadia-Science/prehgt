@@ -25,3 +25,10 @@ Potential changes or additions for transcriptome data:
 2. We may need to introduce gene calling and annotation modules. [Dammit](https://github.com/dib-lab/dammit/tree/v2_staging/dammit/workflows) will be a good resource to use to decide what tools to use.
 3. Different contamination screening, probably looking for Eukaryotic-specific RNA processing signals (5' cap, 3' cap, kozac sequence, etc.).
 4. Integration between genomes and transcriptomes.
+
+## DAG of snakemake pipeline
+
+The figure below represents a directed acyclic graph of the snakemake pipeline.
+As the pipeline is still a work in progress, we'll add documentation for each step later.
+
+![](fig/dag.png)
