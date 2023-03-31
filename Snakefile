@@ -36,7 +36,10 @@ metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", heade
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
-#ACCESSION = metadata['accession'].unique().tolist()
+
+# explanation of wildcards:
+# genus (defined by GENUS): All of the genera that the pipeline will be executed on. This is defined from an input metadata file. 
+# accession (inferred from checkpoint_accessions_to_genus): While all genome accessions are recorded in the metadata file, this snakefile uses the class checkpoint_accessions_to_genus to create a mapping between accessions and the genera they occur in. 
 
 rule all:
     input:
@@ -49,6 +52,10 @@ rule all:
 ###################################################
 
 rule download_reference_genomes:
+    '''
+    Using genome accessions defined in the input metadata file (e.g. GCA_018360135.1), this rule uses the ncbi-genome-download tool to download the GFF annotation file and coding domain sequence (CDS) fasta file. 
+    Most genomes have long names; this rule also truncates the file names after the accession.
+    '''
     output: 
         cds="inputs/genbank/{accession}_cds_from_genomic.fna.gz",
         gff="inputs/genbank/{accession}_genomic.gff.gz",
@@ -85,6 +92,14 @@ rule shorten_gene_names_for_codonw:
 ###################################################
 
 checkpoint accessions_to_genus:
+    '''
+    The input metadata file defines the taxonomic lineage of each of the input genomes.
+    This rule creates a CSV file with all of the genomes that belong to a given genus.
+    It generates the wildcard genus, which is defined from the input metadata file at the top of the snakefile.
+    This checkpoint is not how checkpoints are usually used in snakemake.
+    Instead, it interacts with the class checkpoint_accessions_to_genus.
+    That class is run after this rule is executed, where it maps all of the accessions that belong to a given genus.
+    '''
     input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
     output: genus="outputs/accessions_to_genus/{genus}.csv",
     conda: "envs/tidyverse.yml"
@@ -92,6 +107,9 @@ checkpoint accessions_to_genus:
     script: "scripts/accessions_to_genus.R"
 
 rule combine_cds_per_genus:
+    '''
+    Using the class checkpoint_accessions_to_genus, this rule combines all CDS sequences from all accessions that belong to a given genus into one file so they can be clustered into a "pangenome."
+    '''
     input: checkpoint_accessions_to_genus('outputs/genbank/{accession}_cds_from_genomic.fna')
     output: "outputs/genus_pangenome_raw/{genus}_cds.fna"
     benchmark: "benchmarks/combine_cds_per_genus/{genus}.tsv"
@@ -101,6 +119,8 @@ rule combine_cds_per_genus:
 
 rule build_genus_pangenome:
     '''
+    This rule clusters all CDS sequences from all accessions in a given genus into a pangenome.
+    This reduces redundancy for subsequent searches, and this information can be leveraged to interpret the HGT candidate genes that will eventually be predicted by the pipeline.
     selecting clustering threshold:
     0.9 https://www.science.org/doi/full/10.1126/sciadv.aba0111
     0.98, 0.99 https://www.sciencedirect.com/science/article/pii/S0960982220314263
@@ -120,6 +140,10 @@ rule build_genus_pangenome:
 ###################################################
 
 rule compositional_scans_codonw:
+    '''
+    This rule uses codonw to estimate a variety of codon bias indices for each coding domain sequence in a genus' pangenome.
+    RAAU stands for relative amino acid usage.
+    '''
     input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
     output: 
         indices="outputs/compositional_scans_codonw/{genus}_indices.txt",
@@ -131,6 +155,9 @@ rule compositional_scans_codonw:
     '''
 
 rule compositional_scans_bbmap:
+    '''
+    This rule estimates tetramernucleotide frequency for each coding domain sequence in a genus' pangenome.
+    '''
     input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
     output: "outputs/compositional_scans_bbmap/{genus}_tetramerfreq.tsv"
     conda: "envs/bbmap.yml"
