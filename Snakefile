@@ -36,8 +36,6 @@ metadata = pd.read_csv("inputs/spomb_pos_control.tsv", header = 0, sep = "\t")
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
-print(GENUS)
-#ACCESSION = metadata['accession'].unique().tolist()
 
 rule all:
     input:
@@ -125,30 +123,19 @@ rule compositional_scans_codonw:
     input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
     output: 
         indices="outputs/compositional_scans_codonw/{genus}_indices.txt",
-        bulk='outputs/compositional_scans_codonw/{genus}_rauu.txt'
+        raau='outputs/compositional_scans_codonw/{genus}_raau.txt'
     conda: "envs/codonw.yml"
     benchmark: "benchmarks/compositional_scans_codonw/{genus}.tsv"
     shell:'''
-    codonw {input} {output.indices} {output.bulk} -all_indices -nomenu -machine -silent -raau
-    '''
-
-rule compositional_scans_bbmap:
-    input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
-    output: "outputs/compositional_scans_bbmap/{genus}_tetramerfreq.tsv"
-    conda: "envs/bbmap.yml"
-    benchmark: "benchmarks/compositional_scans_bbmap/{genus}.tsv"
-    shell:'''
-    tetramerfreq.sh in={input} out={output} w=0 short=T k=4
+    codonw {input} {output.indices} {output.raau} -all_indices -nomenu -machine -silent -raau
     '''
 
 rule compositional_scans_to_hgt_candidates:
     input:
-        indices="outputs/compositional_scans_codonw/{genus}_indices.txt",
-        bulk='outputs/compositional_scans_codonw/{genus}_rauu.txt',
-        tetra="outputs/compositional_scans_bbmap/{genus}_tetramerfreq.tsv"
+        raau='outputs/compositional_scans_codonw/{genus}_raau.txt',
     output: 
-        cds_lst="outputs/compositional_scans_hgt_candidates/{genus}_cds_list.txt",
-        # OTHER INFO
+        tsv="outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv"
+        gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_gene_lst.txt",
     benchmark: "benchmarks/compositional_scans_to_hgt_candidates/{genus}.tsv"
     conda: "envs/tidyverse.yml"
     script: "scripts/compositional_scans_to_hgt_candidates.R"
@@ -157,13 +144,13 @@ rule compositional_scans_to_hgt_candidates:
 ## BLASTP (diamond) against clustered nr
 ###################################################
 
-rule blastp_against_clustered_nr:
+rule blast_against_clustered_nr:
     input:
-        db="inputs/nr_rep_seq.fasta.gz",
+        db="inputs/nr_rep_seq.fasta.gz", # downloaded from S3...TBD on how to make available, its 60GB
         query="outputs/genus_pangenome_clusters/{genus}_cds_rep_seq.fasta"
     output: "outputs/blast_diamond/{genus}_vs_clustered_nr.tsv"
     conda: "envs/diamond.yml"
-    benchmark:
+    benchmark: "benchmarks/blast_against_clustered_nr/{genus}.tsv"
     threads: 16
     shell:'''
     diamond blastp --db {input.db} --query {input.query} --out {output} --outfmt 6 --max-target-seqs 100 --threads {threads} --faster
@@ -172,26 +159,75 @@ rule blastp_against_clustered_nr:
 rule blast_add_taxonomy_info:
     input: 
         tsv="outputs/blast_diamond/{genus}_vs_clustered_nr.tsv",
-        sqldb=""
-    output:
+        sqldb="inputs/nr_cluster_taxid_formatted_final.sqlite" # downloaded from S3...TBD on how to make available, it's 63 GB
+    output: tsv="outputs/blast_diamond/{genus}_vs_clustered_nr_lineages.tsv"
+    params: sqldb_tbl="nr_cluster_taxid_table"
     conda: "envs/r-sql.yml"
-    benchmark:
-    script: "scripts/...R"
+    benchmark: "benchmarks/blast_add_taxonomy_info/{genus}.tsv"
+    script: "scripts/blast_add_taxonomy_info.R"
 
 rule blast_to_hgt_candidates:
-    input:
-    output:
+    input: tsv="outputs/blast_diamond/{genus}_vs_clustered_nr_lineages.tsv"
+    output: 
+        gene_lst="outputs/blast_hgt_candidates/{genus}_gene_lst.txt",
+        tsv="outputs/blast_hgt_candidates/{genus}_blast_scores.tsv"
     conda: "envs/tidyverse.yml"
-    benchmark:
+    benchmark: "outputs/blast_to_hgt_candidates/{genus}.tsv"
     script: "scripts/blast_to_hgt_candidates.R"
-
 
 ###################################################
 ## candidate characterization
 ###################################################
 
 rule combine_hgt_candidates:
+    input: 
+       "outputs/blast_hgt_candidates/{genus}_gene_lst.txt",
+       "outputs/compositional_scans_hgt_candidates/{genus}_gene_lst.txt"
+    output: "outputs/hgt_candidates/{genus}_gene_lst.txt"
+    conda: "envs/csvtk.yml"
+    shell:'''
+    cat {input} | csvtk summary -H -f 1:uniq -o {output}
+    '''
 
 rule extract_hgt_candidates:
+    input:
+        fa = "outputs/genus_pangenome_clusters/{genus}_cds_rep_seq.fasta", 
+        gene_lst = "outputs/hgt_candidates/{genus}_gene_lst.txt"
+    output: "outputs/hgt_candidates/{genus}_cds.fasta"
+    benchmark: "benchmarks/extract_hgt_candidates/{genus}.tsv"
+    conda: "envs/seqtk.yml"
+    shell:'''
+    seqtk subseq {input.fa} {input.gene_lst} > {output}
+    '''
+
+rule download_eggnog_db:
+    output: "inputs/eggnog_db/eggnog.db"
+    conda: "envs/eggnog.yml"
+    shell:'''
+    download_eggnog_data.py -H -d 2 -y --data_dir inputs/eggnog_db
+    '''
 
 rule eggnog_hgt_candidates:
+    input:
+        db="inputs/eggnog_db/eggnog.db",
+        fa="outputs/hgt_candidates/{genus}_cds.fasta"
+    output: "outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations",
+    conda: "envs/eggnog.yml"
+    params:
+        outdir="outputs/hgt_candidates_annotation/eggnog/",
+        dbdir = "inputs/eggnog_db" 
+    threads: 4
+    benchmark: "benchmarks/eggnog_hgt_candidates/{genus}.tsv"
+    shell:'''
+    emapper.py --cpu {threads} -i {input.fa} --output {genus} \
+       --output_dir {params.outdir} -m hmmer -d none --tax_scope none \
+       --seed_ortholog_score 60 --override --temp_dir tmp/ \
+       --data_dir {params.dbdir} --itype CDS --translate True
+    '''
+
+rule download_antismash_hmms:
+    input:
+    output:
+    shell:'''
+    
+    '''
