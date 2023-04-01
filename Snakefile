@@ -42,10 +42,8 @@ GENUS = metadata['genus'].unique().tolist()
 # accession (inferred from checkpoint_accessions_to_genus): While all genome accessions are recorded in the metadata file, this snakefile uses the class checkpoint_accessions_to_genus to create a mapping between accessions and the genera they occur in. 
 
 rule all:
-    input:
-        expand("outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta", genus = GENUS),
-        expand("outputs/compositional_scans_codonw/{genus}_indices.txt", genus = GENUS),
-        expand("outputs/compositional_scans_bbmap/{genus}_tetramerfreq.tsv", genus = GENUS)
+    input: expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS)
+        
 
 ###################################################
 ## download references
@@ -163,8 +161,8 @@ rule compositional_scans_to_hgt_candidates:
     input:
         raau='outputs/compositional_scans_codonw/{genus}_raau.txt',
     output: 
-        tsv="outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv"
-        gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_gene_lst.txt",
+        tsv="outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv",
+        gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_gene_lst.txt"
     benchmark: "benchmarks/compositional_scans_to_hgt_candidates/{genus}.tsv"
     conda: "envs/tidyverse.yml"
     script: "scripts/compositional_scans_to_hgt_candidates.R"
@@ -181,7 +179,7 @@ rule blast_against_clustered_nr:
     '''
     input:
         db="inputs/nr_rep_seq.fasta.gz", # downloaded from S3...TBD on how to make available, its 60GB
-        query="outputs/genus_pangenome_clusters/{genus}_cds_rep_seq.fasta"
+        query="outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
     output: "outputs/blast_diamond/{genus}_vs_clustered_nr.tsv"
     conda: "envs/diamond.yml"
     benchmark: "benchmarks/blast_against_clustered_nr/{genus}.tsv"
@@ -234,7 +232,7 @@ rule combine_hgt_candidates:
     output: "outputs/hgt_candidates/{genus}_gene_lst.txt"
     conda: "envs/csvtk.yml"
     shell:'''
-    cat {input} | csvtk summary -H -f 1:uniq -o {output}
+    cat {input} | csvtk freq -H -f 1 | csvtk cut -f 1 -o {output}
     '''
 
 rule extract_hgt_candidates:
@@ -243,7 +241,7 @@ rule extract_hgt_candidates:
     The output is a FASTA file containing the sequences of the identified HGT candidate genes.
     '''
     input:
-        fa = "outputs/genus_pangenome_clusters/{genus}_cds_rep_seq.fasta", 
+        fa = "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta", 
         gene_lst = "outputs/hgt_candidates/{genus}_gene_lst.txt"
     output: "outputs/hgt_candidates/{genus}_cds.fasta"
     benchmark: "benchmarks/extract_hgt_candidates/{genus}.tsv"
@@ -278,10 +276,11 @@ rule eggnog_hgt_candidates:
     threads: 4
     benchmark: "benchmarks/eggnog_hgt_candidates/{genus}.tsv"
     shell:'''
-    emapper.py --cpu {threads} -i {input.fa} --output {genus} \
-       --output_dir {params.outdir} -m hmmer -d none --tax_scope none \
+    mkdir -p tmp
+    emapper.py --cpu {threads} -i {input.fa} --output {wildcards.genus} \
+       --output_dir {params.outdir} -m diamond --tax_scope none \
        --seed_ortholog_score 60 --override --temp_dir tmp/ \
-       --data_dir {params.dbdir} --itype CDS --translate True
+       --data_dir {params.dbdir} --itype CDS --translate
     '''
 
 rule download_antismash_hmms:
