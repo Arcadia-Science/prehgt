@@ -1,5 +1,6 @@
 library(readr)
 library(dplyr)
+library(purrr)
 library(janitor)
 
 compositional <- unlist(snakemake@input[['compositional']]) %>%
@@ -7,7 +8,7 @@ compositional <- unlist(snakemake@input[['compositional']]) %>%
   set_names() %>%
   map_dfr(read_tsv, .id = "genus") %>%
   mutate(genus = gsub("_clusters.tsv", "", basename(genus))) %>%
-  rename(hgt_candidate = cds, RAAU_cluster = cluster)
+  rename(RAAU_cluster = cluster)
 
 blast <- unlist(snakemake@input[['blast']]) %>%
 #blast <- Sys.glob("outputs/blast_hgt_candidates/*_blast_scores.tsv") %>%

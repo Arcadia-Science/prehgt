@@ -38,8 +38,13 @@ small_clusters <- clusters %>%
 clusters <- clusters %>%
   filter(cluster %in% small_clusters$cluster)
 
+# append "_1" to each of the hgt candidate protein names to match with names after running transeq
+clusters <- clusters %>%
+  mutate(hgt_candidate = paste0(cds, "_1")) %>%
+  select(-cds)
+
 # write out a gene list to use extract CDS sequences of HGT candidates from FASTA
-write_tsv(clusters[1], snakemake@output[['gene_lst']], col_names = F)
+write_tsv(clusters[2], snakemake@output[['gene_lst']], col_names = F)
 # write out cluster membership file
 write_tsv(clusters, snakemake@output[['tsv']])
 
