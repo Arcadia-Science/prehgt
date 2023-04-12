@@ -32,7 +32,7 @@ class checkpoint_accessions_to_genus:
         return p
 
 
-metadata = pd.read_csv("inputs/spomb_pos_control.tsv", header = 0, sep = "\t")
+metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set_small.tsv", header = 0, sep = "\t")
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
@@ -42,9 +42,8 @@ GENUS = metadata['genus'].unique().tolist()
 # accession (inferred from checkpoint_accessions_to_genus): While all genome accessions are recorded in the metadata file, this snakefile uses the class checkpoint_accessions_to_genus to create a mapping between accessions and the genera they occur in. 
 
 rule all:
-    input: expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS)
+    input: "outputs/hgt_candidates_final/results.tsv"
         
-
 ###################################################
 ## download references
 ###################################################
@@ -91,7 +90,7 @@ rule shorten_gene_names_for_codonw:
 ###################################################
 
 checkpoint accessions_to_genus:
-    input: metadata="inputs/spomb_pos_control.tsv"
+    input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
     '''
     The input metadata file defines the taxonomic lineage of each of the input genomes.
     This rule creates a CSV file with all of the genomes that belong to a given genus.
@@ -134,7 +133,16 @@ rule build_genus_pangenome:
     mmseqs easy-cluster {input} {params.outprefix} tmp_mmseqs2 --min-seq-id 0.9
     '''
 
-###################################################
+rule translate_pangenome:
+    input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
+    output: "outputs/genus_pangenome_clustered/{genus}_aa_rep_seq.fasta"
+    conda: "envs/emboss.yml"
+    benchmark: "benchmarks/translate_pangenome/{genus}.tsv"
+    shell:'''
+    transeq -sequence {input} -outseq {output}
+    '''
+
+##################################################
 ## DNA compositional screen
 ###################################################
 
@@ -179,7 +187,7 @@ rule blast_against_clustered_nr:
     '''
     input:
         db="inputs/nr_rep_seq.fasta.gz", # downloaded from S3...TBD on how to make available, its 60GB
-        query="outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
+        query="outputs/genus_pangenome_clustered/{genus}_aa_rep_seq.fasta"
     output: "outputs/blast_diamond/{genus}_vs_clustered_nr.tsv"
     conda: "envs/diamond.yml"
     benchmark: "benchmarks/blast_against_clustered_nr/{genus}.tsv"
@@ -214,7 +222,7 @@ rule blast_to_hgt_candidates:
         gene_lst="outputs/blast_hgt_candidates/{genus}_gene_lst.txt",
         tsv="outputs/blast_hgt_candidates/{genus}_blast_scores.tsv"
     conda: "envs/tidyverse.yml"
-    benchmark: "outputs/blast_to_hgt_candidates/{genus}.tsv"
+    benchmark: "benchmarks/blast_to_hgt_candidates/{genus}.tsv"
     script: "scripts/blast_to_hgt_candidates.R"
 
 ###################################################
@@ -241,9 +249,9 @@ rule extract_hgt_candidates:
     The output is a FASTA file containing the sequences of the identified HGT candidate genes.
     '''
     input:
-        fa = "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta", 
+        fa = "outputs/genus_pangenome_clustered/{genus}_aa_rep_seq.fasta", 
         gene_lst = "outputs/hgt_candidates/{genus}_gene_lst.txt"
-    output: "outputs/hgt_candidates/{genus}_cds.fasta"
+    output: "outputs/hgt_candidates/{genus}_aa.fasta"
     benchmark: "benchmarks/extract_hgt_candidates/{genus}.tsv"
     conda: "envs/seqtk.yml"
     shell:'''
@@ -267,7 +275,7 @@ rule eggnog_hgt_candidates:
     '''
     input:
         db="inputs/eggnog_db/eggnog.db",
-        fa="outputs/hgt_candidates/{genus}_cds.fasta"
+        fa="outputs/hgt_candidates/{genus}_aa.fasta"
     output: "outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations",
     conda: "envs/eggnog.yml"
     params:
@@ -280,7 +288,7 @@ rule eggnog_hgt_candidates:
     emapper.py --cpu {threads} -i {input.fa} --output {wildcards.genus} \
        --output_dir {params.outdir} -m diamond --tax_scope none \
        --seed_ortholog_score 60 --override --temp_dir tmp/ \
-       --data_dir {params.dbdir} --itype CDS --translate
+       --data_dir {params.dbdir}
     '''
 
 rule download_antismash_hmms:
@@ -289,3 +297,18 @@ rule download_antismash_hmms:
     shell:'''
     
     '''
+
+###################################################
+## Combine results
+###################################################
+
+rule combine_results:
+    input: 
+        compositional = expand("outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv", genus = GENUS),
+        blast = expand("outputs/blast_hgt_candidates/{genus}_blast_scores.tsv", genus = GENUS),
+        eggnog = expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS),
+    output: 
+        all_results = "outputs/hgt_candidates_final/results.tsv",
+        method_tally = "outputs/hgt_candidates_final/method_tally.tsv"
+    conda: "envs/tidyverse.yml"
+    script: "scripts/combine_results.R"
