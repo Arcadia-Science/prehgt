@@ -42,7 +42,7 @@ GENUS = metadata['genus'].unique().tolist()
 # accession (inferred from checkpoint_accessions_to_genus): While all genome accessions are recorded in the metadata file, this snakefile uses the class checkpoint_accessions_to_genus to create a mapping between accessions and the genera they occur in. 
 
 rule all:
-    input: "outputs/hgt_candidates_final/results_microplitis.tsv"
+    input: "outputs/hgt_candidates_final/results_venom.tsv"
         
 ###################################################
 ## download references
@@ -302,7 +302,7 @@ rule combine_results:
         blast = expand("outputs/blast_hgt_candidates/{genus}_blast_scores.tsv", genus = GENUS),
         eggnog = expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS),
     output: 
-        all_results = "outputs/hgt_candidates_final/results_microplitis.tsv",
-        method_tally = "outputs/hgt_candidates_final/method_tally_microplitis.tsv"
+        all_results = "outputs/hgt_candidates_final/results_venom.tsv",
+        method_tally = "outputs/hgt_candidates_final/method_tally_venom.tsv"
     conda: "envs/tidyverse.yml"
     script: "scripts/combine_results.R"
