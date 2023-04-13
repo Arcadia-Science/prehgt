@@ -43,7 +43,7 @@ parse_pepstats_to_amino_acid_frequencies <- function(content) {
 
 file_content <- readLines(snakemake@input[['raau']])
 #file_content <- readLines("sandbox/emboss/tmp.pepstats")
-raau <- parse_amino_acid_frequencies(file_content)
+raau <- parse_pepstats_to_amino_acid_frequencies(file_content)
 
 # create a distance matrix of genes which will estimate all-by-all amino acid usage per gene
 d <- raau %>%
@@ -76,7 +76,7 @@ clusters <- clusters %>%
   rename(hgt_candidate = cds)
 
 # write out a gene list to use extract CDS sequences of HGT candidates from FASTA
-write_tsv(clusters[2], snakemake@output[['gene_lst']], col_names = F)
+write_tsv(clusters[1], snakemake@output[['gene_lst']], col_names = F)
 # write out cluster membership file
 write_tsv(clusters, snakemake@output[['tsv']])
 
