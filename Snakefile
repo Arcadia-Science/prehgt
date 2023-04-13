@@ -137,19 +137,16 @@ rule translate_pangenome:
 ## DNA compositional screen
 ###################################################
 
-rule compositional_scans_codonw:
+rule compositional_scans_pepstats:
     '''
-    This rule uses codonw to estimate a variety of codon bias indices for each coding domain sequence in a genus' pangenome.
-    RAAU stands for relative amino acid usage.
+    This rule uses emboss pepstats to calculate relative amino acid usage per pangenome seq
     '''
-    input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
-    output: 
-        indices="outputs/compositional_scans_codonw/{genus}_indices.txt",
-        raau='outputs/compositional_scans_codonw/{genus}_raau.txt'
-    conda: "envs/codonw.yml"
-    benchmark: "benchmarks/compositional_scans_codonw/{genus}.tsv"
+    input: "outputs/genus_pangenome_clustered/{genus}_aa_rep_seq.fasta"
+    output: 'outputs/compositional_scans_pepstats/{genus}_pepstats.txt'
+    conda: "envs/emboss.yml"
+    benchmark: "benchmarks/compositional_scans_pepstats/{genus}.tsv"
     shell:'''
-    codonw {input} {output.indices} {output.raau} -all_indices -nomenu -machine -silent -raau
+    pepstats -sequence {input} -outfile {output}
     '''
 
 rule compositional_scans_to_hgt_candidates:
@@ -157,9 +154,7 @@ rule compositional_scans_to_hgt_candidates:
     This script performs hierarchical clustering on genes based on their relative amino acid usage and identifies clusters with fewer than 150 genes. 
     The output is a list of genes that belong to these small clusters, which are considered HGT candidates.
     '''
-    input:
-        raau='outputs/compositional_scans_codonw/{genus}_raau.txt',
-        names = "outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv"
+    input: raau='outputs/compositional_scans_pepstats/{genus}_pepstats.txt',
     output: 
         tsv="outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv",
         gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_gene_lst.txt"
