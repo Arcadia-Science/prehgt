@@ -6,8 +6,20 @@ library(tidyr)
 
 # read in the relative amino acid usage data frame produced by codonw and fix the column names and gene name
 codonw_raau <- read_delim(snakemake@input[['raau']], delim= " ") %>%
+#codonw_raau <- read_delim("outputs/compositional_scans_codonw/Agrocybe_raau.txt", delim = " ") %>%
   clean_names()  %>% # standardize column name capitalization and remove spaces
   dplyr::mutate(gene_name = gsub("_$", "", gene_name)) # remove trailing underscore introduced by codonw
+
+# read in mmseqs gene names
+gene_names <- read_tsv(snakemake@input[['names']], col_names = c("gene_name", "cluster_members")) %>%
+#gene_names <- read_tsv("outputs/genus_pangenome_clustered/Agrocybe_cds_cluster.tsv", col_names = c("gene_name", "cluster_members")) %>%
+  select(gene_name) %>%
+  distinct()
+
+# replace dumb truncated codonw names with mmseqs names
+# NOTE THIS IS NOT A JOIN
+# IT'S A HARD REPLACE, AND ASSUMES THE CODONW AND MMSEQS FILES ARE SORTED IN THE SAME ORDER (they are).
+codonw_raau$gene_name <- gene_names$gene_name
 
 # remove frequencies of unknown amino acids and create a distance matrix of genes which will estimate all-by-all amino acid usuage per gene
 d <- codonw_raau %>%

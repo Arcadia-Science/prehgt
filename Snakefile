@@ -32,7 +32,7 @@ class checkpoint_accessions_to_genus:
         return p
 
 
-metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set_small.tsv", header = 0, sep = "\t")
+metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
@@ -42,7 +42,7 @@ GENUS = metadata['genus'].unique().tolist()
 # accession (inferred from checkpoint_accessions_to_genus): While all genome accessions are recorded in the metadata file, this snakefile uses the class checkpoint_accessions_to_genus to create a mapping between accessions and the genera they occur in. 
 
 rule all:
-    input: "outputs/hgt_candidates_final/results.tsv"
+    input: "outputs/hgt_candidates_final/results_microplitis.tsv"
         
 ###################################################
 ## download references
@@ -66,23 +66,12 @@ rule download_reference_genomes:
     mv {params.outdir}{wildcards.accession}*_genomic.gff.gz {output.gff}
     '''
 
-rule shorten_gene_names_for_codonw:
-    '''
-    codonw truncates multifasta names (output at 25 characters, bulk output at 20 characters).
-    The protein names should be unique identifiers.
-    The following code parses the FASTA headers so they end up as the protein ids.
-    This also matches annotations in the GFF file.
-    * awk '{print $1;next}1' removes everything after the first space
-    * sed 's/lcl|//g' removes the prefix lcl|
-    * sed 's/_cds//g' removes the string _cds if it exists in the header
-    * cut -d_ -f1,2 removes the second underscore and everything after it
-    double curly braces escape snakemake and are parsed as single curly braces in the shell command
-    '''
+rule decompress_genome:
     input: "inputs/genbank/{accession}_cds_from_genomic.fna.gz"
     output: "outputs/genbank/{accession}_cds_from_genomic.fna"
-    benchmark: "benchmarks/shorten_gene_names/{accession}.tsv"
+    benchmark: "benchmarks/decompress_reference_genomes/{accession}.tsv"
     shell:'''
-    gunzip -c {input} | awk '{{print $1;next}}1' | sed 's/lcl|//g' | sed 's/_cds//g' | cut -d_ -f1,2 > {output}
+    gunzip -c {input} > {output} 
     '''
 
 ###################################################
@@ -90,7 +79,7 @@ rule shorten_gene_names_for_codonw:
 ###################################################
 
 checkpoint accessions_to_genus:
-    input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
+    input: metadata="inputs/venoms.tsv"
     '''
     The input metadata file defines the taxonomic lineage of each of the input genomes.
     This rule creates a CSV file with all of the genomes that belong to a given genus.
@@ -125,14 +114,16 @@ rule build_genus_pangenome:
     0.9 https://www.pnas.org/doi/abs/10.1073/pnas.2009974118
     '''
     input: "outputs/genus_pangenome_raw/{genus}_cds.fna"
-    output: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
+    output: 
+        "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta",
+        "outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv"
     conda: "envs/mmseqs2.yml"
     benchmark:"benchmarks/genus_pangenome/{genus}.tsv"
     params: outprefix = lambda wildcards: "outputs/genus_pangenome_clustered/" + wildcards.genus + "_cds"
     shell:'''
     mmseqs easy-cluster {input} {params.outprefix} tmp_mmseqs2 --min-seq-id 0.9
     '''
-
+    
 rule translate_pangenome:
     input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
     output: "outputs/genus_pangenome_clustered/{genus}_aa_rep_seq.fasta"
@@ -168,6 +159,7 @@ rule compositional_scans_to_hgt_candidates:
     '''
     input:
         raau='outputs/compositional_scans_codonw/{genus}_raau.txt',
+        names = "outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv"
     output: 
         tsv="outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv",
         gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_gene_lst.txt"
@@ -193,7 +185,9 @@ rule blast_against_clustered_nr:
     benchmark: "benchmarks/blast_against_clustered_nr/{genus}.tsv"
     threads: 16
     shell:'''
-    diamond blastp --db {input.db} --query {input.query} --out {output} --outfmt 6 --max-target-seqs 100 --threads {threads} --faster
+    diamond blastp --db {input.db} --query {input.query} --out {output} \
+        --outfmt 6  qseqid qtitle sseqid stitle pident approx_pident length mismatch gapopen qstart qend qlen qcovhsp sstart send slen scovhsp evalue bitscore score corrected_bitscore  \
+        --max-target-seqs 100 --threads {threads} --faster
     '''
 
 rule blast_add_taxonomy_info:
@@ -281,7 +275,7 @@ rule eggnog_hgt_candidates:
     params:
         outdir="outputs/hgt_candidates_annotation/eggnog/",
         dbdir = "inputs/eggnog_db" 
-    threads: 4
+    threads: 8
     benchmark: "benchmarks/eggnog_hgt_candidates/{genus}.tsv"
     shell:'''
     mkdir -p tmp
@@ -308,7 +302,7 @@ rule combine_results:
         blast = expand("outputs/blast_hgt_candidates/{genus}_blast_scores.tsv", genus = GENUS),
         eggnog = expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS),
     output: 
-        all_results = "outputs/hgt_candidates_final/results.tsv",
-        method_tally = "outputs/hgt_candidates_final/method_tally.tsv"
+        all_results = "outputs/hgt_candidates_final/results_microplitis.tsv",
+        method_tally = "outputs/hgt_candidates_final/method_tally_microplitis.tsv"
     conda: "envs/tidyverse.yml"
     script: "scripts/combine_results.R"

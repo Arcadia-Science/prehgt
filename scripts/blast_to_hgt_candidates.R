@@ -89,8 +89,8 @@ lca <- function(lineage_df){
 # read BLAST results ---------------------------------------------------
 
 # read in BLAST results
-#blast <- read_tsv("sandbox/try_blast/Schizosaccharomyces_aa_rep_seq_diamond_blastp_vs_nr_rep_seq_lineages.tsv")
-blast <- read_tsv(snakemake@input[['tsv']], col_types = "ccddddddddddccccccccc")
+#blast <- read_tsv("outputs/blast_diamond/Microplitis_vs_clustered_nr_lineages.tsv", col_types = "ccccdddddddddddddddddccccccccc")
+blast <- read_tsv(snakemake@input[['tsv']], col_types = "ccccdddddddddddddddddccccccccc")
 # edit kingdom to seven categories
 blast <- blast %>%
   mutate(kingdom = ifelse(kingdom == "unclassified Bacteria kingdom", "Bacteria", kingdom),
