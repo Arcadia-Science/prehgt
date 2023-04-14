@@ -10,8 +10,20 @@ compositional <- unlist(snakemake@input[['compositional']]) %>%
   mutate(genus = gsub("_clusters.tsv", "", basename(genus))) %>%
   rename(RAAU_cluster = cluster)
 
-blast <- unlist(snakemake@input[['blast']]) %>%
-#blast <- Sys.glob("outputs/blast_hgt_candidates/*_blast_scores.tsv") %>%
+# check the number of rows for each input file
+# remove the files that only have 1 row, which means no BLAST results
+blast_files <- unlist(snakemake@input[['blast']])
+#blast_files <- Sys.glob("outputs/blast_hgt_candidates/*_blast_scores.tsv")
+blast_files_with_results <- character()
+i <- 1
+for(file in blast_files){
+  if(length(count_fields(file, tokenizer_tsv())) > 1){
+    blast_files_with_results[i] <- file
+    i <- i + 1
+  }
+}
+
+blast <- blast_files_with_results %>%
   set_names() %>%
   map_dfr(read_tsv, .id = "genus") %>%
   rename_with( ~ paste0("blast_", .x)) %>%
