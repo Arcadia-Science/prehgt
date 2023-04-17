@@ -32,7 +32,8 @@ class checkpoint_accessions_to_genus:
         return p
 
 
-metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
+#metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
+metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
@@ -42,7 +43,7 @@ GENUS = metadata['genus'].unique().tolist()
 # accession (inferred from checkpoint_accessions_to_genus): While all genome accessions are recorded in the metadata file, this snakefile uses the class checkpoint_accessions_to_genus to create a mapping between accessions and the genera they occur in. 
 
 rule all:
-    input: "outputs/hgt_candidates_final/results_venom.tsv"
+    input: "outputs/hgt_candidates_final/results_fungi.tsv"
         
 ###################################################
 ## download references
@@ -79,7 +80,8 @@ rule decompress_genome:
 ###################################################
 
 checkpoint accessions_to_genus:
-    input: metadata="inputs/venoms.tsv"
+    #input: metadata="inputs/venoms.tsv"
+    input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
     '''
     The input metadata file defines the taxonomic lineage of each of the input genomes.
     This rule creates a CSV file with all of the genomes that belong to a given genus.
@@ -297,7 +299,7 @@ rule combine_results:
         blast = expand("outputs/blast_hgt_candidates/{genus}_blast_scores.tsv", genus = GENUS),
         eggnog = expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS),
     output: 
-        all_results = "outputs/hgt_candidates_final/results_venom.tsv",
-        method_tally = "outputs/hgt_candidates_final/method_tally_venom.tsv"
+        all_results = "outputs/hgt_candidates_final/results_fungi.tsv",
+        method_tally = "outputs/hgt_candidates_final/method_tally_fungi.tsv"
     conda: "envs/tidyverse.yml"
     script: "scripts/combine_results.R"
