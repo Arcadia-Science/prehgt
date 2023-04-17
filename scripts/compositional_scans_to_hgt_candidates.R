@@ -1,4 +1,5 @@
 library(tidyverse)
+library(fastcluster)
 
 # functions ---------------------------------------------------------------
 
@@ -44,16 +45,16 @@ parse_pepstats_to_amino_acid_frequencies <- function(content) {
 file_content <- readLines(snakemake@input[['raau']])
 #file_content <- readLines("sandbox/emboss/tmp.pepstats")
 raau <- parse_pepstats_to_amino_acid_frequencies(file_content)
-
+print("RAAU parsing done.")
 # create a distance matrix of genes which will estimate all-by-all amino acid usage per gene
 d <- raau %>%
   select(-ID) %>% # rm bc info is in rownames
   as.matrix() %>% # convert to matrix
   dist() # compute and return a distance matrix
-
+print("Distance matrix calculated.")
 # cluster genes based on the amino acid frequency table
-hr <- hclust(d)
-
+hr <- fastcluster::hclust(d)
+print("Hierarchical clustering done.")
 # define clusters by cutting the dendogram
 clusters <- cutree(hr, h=max(hr$height/1.5))
 
