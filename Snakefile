@@ -38,6 +38,12 @@ source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
 
+# remove Trametes String from genus list
+while("Trametes" in GENUS):
+    GENUS.remove("Trametes")
+
+print(GENUS)
+
 # explanation of wildcards:
 # genus (defined by GENUS): All of the genera that the pipeline will be executed on. This is defined from an input metadata file. 
 # accession (inferred from checkpoint_accessions_to_genus): While all genome accessions are recorded in the metadata file, this snakefile uses the class checkpoint_accessions_to_genus to create a mapping between accessions and the genera they occur in. 
@@ -282,11 +288,18 @@ rule eggnog_hgt_candidates:
        --data_dir {params.dbdir}
     '''
 
-rule download_antismash_hmms:
+rule hmmscan_hgt_candidates:
     input:
+        hmmdb="inputs/hmms/all_hmms.hmm",
+        fa="outputs/hgt_candidates/{genus}_aa.fasta"
     output:
+        tblout="outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout",
+        out="outputs/hgt_candidates_annotation/hmmscan/{genus}.out"
+    conda: "envs/hmmer.yml"
+    threads: 8
+    benchmark: "benchmarks/hmmscan_hgt_candidates/{genus}.tsv"
     shell:'''
-    
+    hmmscan --cpu {threads} --tblout {output.tblout} -o {output.out} {input.hmmdb} {input.fa}
     '''
 
 ###################################################
@@ -298,6 +311,7 @@ rule combine_results:
         compositional = expand("outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv", genus = GENUS),
         blast = expand("outputs/blast_hgt_candidates/{genus}_blast_scores.tsv", genus = GENUS),
         eggnog = expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS),
+        hmmscan = expand("outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout", genus = GENUS)
     output: 
         all_results = "outputs/hgt_candidates_final/results_fungi.tsv",
         method_tally = "outputs/hgt_candidates_final/method_tally_fungi.tsv"

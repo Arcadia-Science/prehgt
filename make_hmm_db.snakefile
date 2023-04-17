@@ -1,4 +1,5 @@
 import pandas as pd
+import shutil
 
 hmm_urls = pd.read_csv("inputs/hmms/hmm_urls.csv", header = 0)
 HMMS = hmm_urls['hmm'].tolist()
@@ -17,11 +18,12 @@ checkpoint decompress_vog_hmms:
     output: directory("inputs/hmms/vogs/")
     params: outdir = "inputs/hmms/vogs/"
     shell:'''
+    mkdir -p {params.outdir}
     tar xf {input} -C {params.outdir}
     '''
 
 rule download_single_hmms:
-    output: "inputs/hmms/single_hmms/{hmm}.hmm"
+    output: "inputs/hmms/single_hmms/raw/{hmm}.hmm"
     run:
         hmm = wildcards.hmm
         hmm_df = hmm_urls.loc[(hmm_urls['hmm'] == wildcards.hmm)]
@@ -29,8 +31,16 @@ rule download_single_hmms:
             raise TypeError("'None' value provided for hmm_df. Are you sure the hmm df was not empty?")
 
         prefix_url = hmm_df['prefix_url'].values[0]
-        shell("curl -JLo {output} {prefix}/{hmm}.hmm")
+        shell("curl -JLo {output} {prefix_url}/{hmm}.hmm")
 
+
+rule convert_single_hmms:
+   input: "inputs/hmms/single_hmms/raw/{hmm}.hmm"
+   output: "inputs/hmms/single_hmms/hmmconvert/{hmm}.hmm"
+   conda: "envs/hmmer.yml"
+   shell:'''
+   hmmconvert {input} > {output}
+   '''
 
 def checkpoint_decompress_vog_hmms(wildcards):
     # expand checkpoint to get VOG hmm prefixes, and place them in the final file name that uses that wildcard
@@ -44,11 +54,13 @@ def checkpoint_decompress_vog_hmms(wildcards):
 rule combine_hmms:
     input:
         vogs = checkpoint_decompress_vog_hmms,
-        single_hmms = expand("inputs/hmms/single_hmms/{hmm}.hmm", hmm = HMMS),
+        single_hmms = expand("inputs/hmms/single_hmms/hmmconvert/{hmm}.hmm", hmm = HMMS),
     output: "inputs/hmms/all_hmms.hmm"
-    shell:'''
-    cat {input} > {output}
-    '''
+    run:
+        with open(str(output[0]), 'wb') as wfd:
+            for f in input:
+                with open(f, 'rb') as fd:
+                    shutil.copyfileobj(fd, wfd)
  
 rule hmmpress:
     input: "inputs/hmms/all_hmms.hmm"
