@@ -32,8 +32,8 @@ class checkpoint_accessions_to_genus:
         return p
 
 
-# metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
-metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
+metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
+#metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
@@ -44,7 +44,7 @@ GENUS = metadata['genus'].unique().tolist()
 
 rule all:
     input: 
-        "outputs/hgt_candidates_final/results_fungi.tsv"
+        "outputs/hgt_candidates_final/results_venoms.tsv"
         
 ###################################################
 ## download references
@@ -84,8 +84,8 @@ rule decompress_genome:
 ###################################################
 
 checkpoint accessions_to_genus:
-    #input: metadata="inputs/venoms.tsv"
-    input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
+    input: metadata="inputs/venoms.tsv"
+    #input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
     '''
     The input metadata file defines the taxonomic lineage of each of the input genomes.
     This rule creates a CSV file with all of the genomes that belong to a given genus.
@@ -201,7 +201,7 @@ rule blast_against_clustered_nr:
     threads: 16
     shell:'''
     diamond blastp --db {input.db} --query {input.query} --out {output} \
-        --outfmt 6  qseqid qtitle sseqid stitle pident approx_pident length mismatch gapopen qstart qend qlen qcovhsp sstart send slen scovhsp evalue bitscore score corrected_bitscore  \
+        --outfmt 6 qseqid qtitle sseqid stitle pident approx_pident length mismatch gapopen qstart qend qlen qcovhsp sstart send slen scovhsp evalue bitscore score corrected_bitscore \
         --max-target-seqs 100 --threads {threads} --faster
     '''
 
@@ -242,6 +242,10 @@ rule combine_hgt_candidates:
     '''
     This rule combines the lists of HGT candidate genes identified through two different methods - BLAST and compositional scans. 
     The output is a single list containing the unique genes from both input lists.
+    * cat {input}: stream the input file to stdin
+    * csvtk freq -H -f 1: for the headerless CSV that is being streamed in (it's a one column txt file so delimiter isn't important), count the frequency of each term in the first field.
+      The frequency is reported as a new column, and duplicated terms are collapsed in the first column.
+    * csvtk cut -f 1 -o {output}: cut the first column (the no de-duplicated hgt candidate names) and output it to a file.
     '''
     input: 
        "outputs/blast_hgt_candidates/{genus}_gene_lst.txt",
@@ -269,7 +273,8 @@ rule extract_hgt_candidates:
 
 rule download_eggnog_db:
     """
-    This rule downloads the eggnog annotation database
+    This rule downloads the eggnog annotation database.
+    The script download_eggnog_data.py is exported by the eggnog mapper tool.
     """
     output: "inputs/eggnog_db/eggnog.db"
     conda: "envs/eggnog.yml"
@@ -281,6 +286,7 @@ rule eggnog_hgt_candidates:
     '''
     This rule uses the EggNOG database to functionally annotate the HGT candidate genes. 
     It runs the EggNOG-Mapper tool on the translated candidate gene sequences, generating a file with the annotations (NOG, KEGG, PFAM, CAZys, EC numbers) for each gene. 
+    The script emapper.py is exported by the eggnog mapper tool.
     '''
     input:
         db="inputs/eggnog_db/eggnog.db",
@@ -336,7 +342,7 @@ rule combine_results:
         pangenome_cluster = expand("outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv", genus = GENUS),
         gff = expand("outputs/genus_pangenome_raw/{genus}_gff_info.tsv", genus = GENUS)
     output: 
-        all_results = "outputs/hgt_candidates_final/results_fungi.tsv",
-        method_tally = "outputs/hgt_candidates_final/method_tally_fungi.tsv"
+        all_results = "outputs/hgt_candidates_final/results_venoms.tsv",
+        method_tally = "outputs/hgt_candidates_final/method_tally_venoms.tsv"
     conda: "envs/tidyverse.yml"
     script: "scripts/combine_results.R"
