@@ -38,18 +38,14 @@ source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
 
-# remove Trametes String from genus list
-while("Trametes" in GENUS):
-    GENUS.remove("Trametes")
-
-print(GENUS)
-
 # explanation of wildcards:
 # genus (defined by GENUS): All of the genera that the pipeline will be executed on. This is defined from an input metadata file. 
 # accession (inferred from checkpoint_accessions_to_genus): While all genome accessions are recorded in the metadata file, this snakefile uses the class checkpoint_accessions_to_genus to create a mapping between accessions and the genera they occur in. 
 
 rule all:
-    input: "outputs/hgt_candidates_final/results_fungi.tsv"
+    input: 
+        "outputs/hgt_candidates_final/results_fungi.tsv",
+        expand("outputs/genus_pangenome_raw/{genus}.gff", genus = GENUS)
         
 ###################################################
 ## download references
@@ -78,7 +74,7 @@ rule decompress_genome:
     output: "outputs/genbank/{accession}_cds_from_genomic.fna"
     benchmark: "benchmarks/decompress_reference_genomes/{accession}.tsv"
     shell:'''
-    gunzip -c {input} > {output} 
+    gunzip -c {input} > {output}
     '''
 
 ###################################################
@@ -109,8 +105,19 @@ rule combine_cds_per_genus:
     output: "outputs/genus_pangenome_raw/{genus}_cds.fna"
     benchmark: "benchmarks/combine_cds_per_genus/{genus}.tsv"
     shell:'''
-    cat {input} > {output}
+    zcat {input} > {output}
     '''
+
+rule combine_and_parse_gff_per_genus:
+    '''
+    Using the class checkpoint_accessions_to_genus, this rule combines all GFF annotation files from all accessions that belong to a given genus into one file.
+    After pangenome clustering, this file will be used to retrieve information (genomic coords, etc) for rep sequences.
+    '''
+    input: gff = checkpoint_accessions_to_genus('inputs/genbank/{accession}_genomic.gff.gz')
+    output: gff = "outputs/genus_pangenome_raw/{genus}_gff_info.tsv"
+    benchmark: "benchmarks/combine_gff_per_genus/{genus}.tsv"
+    conda: "envs/tidyverse.yml"
+    script: "scripts/combine_and_parse_gff_per_genus.R"
 
 rule build_genus_pangenome:
     '''
@@ -131,7 +138,7 @@ rule build_genus_pangenome:
     shell:'''
     mmseqs easy-cluster {input} {params.outprefix} tmp_mmseqs2 --min-seq-id 0.9
     '''
-    
+
 rule translate_pangenome:
     input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
     output: "outputs/genus_pangenome_clustered/{genus}_aa_rep_seq.fasta"
@@ -311,7 +318,10 @@ rule combine_results:
         compositional = expand("outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv", genus = GENUS),
         blast = expand("outputs/blast_hgt_candidates/{genus}_blast_scores.tsv", genus = GENUS),
         eggnog = expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS),
-        hmmscan = expand("outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout", genus = GENUS)
+        hmmscan = expand("outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout", genus = GENUS),
+        acc_to_genus = expand("outputs/accessions_to_genus/{genus}.csv", genus = GENUS),
+        pangenome_cluster = expand("outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv", genus = GENUS),
+        gff = expand("outputs/genus_pangenome_raw/{genus}_gff_info.tsv", genus = GENUS)
     output: 
         all_results = "outputs/hgt_candidates_final/results_fungi.tsv",
         method_tally = "outputs/hgt_candidates_final/method_tally_fungi.tsv"
