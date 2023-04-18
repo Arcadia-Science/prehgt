@@ -3,7 +3,6 @@ library(fastcluster)
 
 # functions ---------------------------------------------------------------
 
-
 # write a function to parse the output of emboss pepstats to get relative amino acid frequencies
 parse_pepstats_to_amino_acid_frequencies <- function(content) {
   protein_ids <- c()
@@ -46,15 +45,18 @@ file_content <- readLines(snakemake@input[['raau']])
 #file_content <- readLines("sandbox/emboss/tmp.pepstats")
 raau <- parse_pepstats_to_amino_acid_frequencies(file_content)
 print("RAAU parsing done.")
+
 # create a distance matrix of genes which will estimate all-by-all amino acid usage per gene
 d <- raau %>%
   select(-ID) %>% # rm bc info is in rownames
   as.matrix() %>% # convert to matrix
   dist() # compute and return a distance matrix
 print("Distance matrix calculated.")
+
 # cluster genes based on the amino acid frequency table
 hr <- fastcluster::hclust(d)
 print("Hierarchical clustering done.")
+
 # define clusters by cutting the dendogram
 clusters <- cutree(hr, h=max(hr$height/1.5))
 
@@ -80,20 +82,3 @@ clusters <- clusters %>%
 write_tsv(clusters[1], snakemake@output[['gene_lst']], col_names = F)
 # write out cluster membership file
 write_tsv(clusters, snakemake@output[['tsv']])
-
-# commented out plotting code ---------------------------------------------
-
-# # get a color palette equal to the number of clusters
-# clusterCols <- rainbow(length(unique(mycl)))
-# 
-# # create vector of colors for side bar
-# myClusterSideBar <- clusterCols[mycl]
-# 
-# # choose a color palette for the heat map
-# myheatcol <- rev(gplots::redgreen(75))
-# 
-# # draw the heat map
-# gplots::heatmap.2(d %>% as.matrix, main="Hierarchical Cluster", Rowv=as.dendrogram(hr), 
-#                   Colv=NA, dendrogram="row", scale="row", col=myheatcol, 
-#                   density.info="none", trace="none", RowSideColors= myClusterSideBar)
-
