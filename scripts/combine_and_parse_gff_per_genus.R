@@ -27,7 +27,7 @@ parse_gff_attribute_field <- function(gff) {
 # accessions <- c("GCA_027627235.1", "GCA_013053245.1", "GCA_015484485.1")
 # gffs <- paste0("inputs/genbank/", accessions, "_genomic.gff.gz")
 gff <- unlist(snakemake@input[['gff']]) %>%
-  map_dfr(read_tsv, comment = "#", 
+  map_dfr(read_tsv, comment = "##", skip = 5,
           col_names = c("seqid", "source", "feature", "start", "end", 
                         "score", "strand", "frame", "attribute"),
           col_types = "cccddcccc")
