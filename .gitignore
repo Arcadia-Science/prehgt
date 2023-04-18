@@ -9,4 +9,10 @@ inputs/20230227_tax_list_full.RDS
 inputs/genbank/
 sandbox/
 tmp_mmseqs2/
+tmp/
 .Rhistory
+inputs/nr_cluster_taxid_formatted_final.sqlite
+inputs/nr_cluster_taxid_formatted_final.tsv
+inputs/nr_rep_seq.fasta.gz
+inputs/eggnog_db/
+inputs/hmms/

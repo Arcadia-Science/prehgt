@@ -15,8 +15,9 @@ lca <- tbl(lca_db, snakemake@params[['sqldb_tbl']])
 # read in the BLAST results
 #blast <- read_tsv("sandbox/try_blast/Schizosaccharomyces_aa_rep_seq_diamond_blastp_vs_nr_rep_seq.txt",
 blast <- read_tsv(snakemake@input[['tsv']],
-                   col_names = c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen", 
-                                 "qstart", "qend", "sstart", "send", "evalue", "bitscore"))
+                   col_names = c("qseqid", "qtitle", "sseqid", "stitle", "pident", "approx_pident", "length", 
+                                 "mismatch", "gapopen", "qstart", "qend", "qlen", "qcovhsp", "sstart", "send", 
+                                 "slen", "scovhsp", "evalue", "bitscore", "score", "corrected_bitscore"))
 
 # make a vector for the sequence ids to retrieve lineages from the sql db for
 tmp_query <- unique(blast$sseqid)

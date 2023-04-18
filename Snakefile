@@ -32,7 +32,8 @@ class checkpoint_accessions_to_genus:
         return p
 
 
-metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set_small.tsv", header = 0, sep = "\t")
+# metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
+metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
@@ -42,7 +43,8 @@ GENUS = metadata['genus'].unique().tolist()
 # accession (inferred from checkpoint_accessions_to_genus): While all genome accessions are recorded in the metadata file, this snakefile uses the class checkpoint_accessions_to_genus to create a mapping between accessions and the genera they occur in. 
 
 rule all:
-    input: "outputs/hgt_candidates_final/results.tsv"
+    input: 
+        "outputs/hgt_candidates_final/results_fungi.tsv"
         
 ###################################################
 ## download references
@@ -66,23 +68,15 @@ rule download_reference_genomes:
     mv {params.outdir}{wildcards.accession}*_genomic.gff.gz {output.gff}
     '''
 
-rule shorten_gene_names_for_codonw:
+rule decompress_genome:
     '''
-    codonw truncates multifasta names (output at 25 characters, bulk output at 20 characters).
-    The protein names should be unique identifiers.
-    The following code parses the FASTA headers so they end up as the protein ids.
-    This also matches annotations in the GFF file.
-    * awk '{print $1;next}1' removes everything after the first space
-    * sed 's/lcl|//g' removes the prefix lcl|
-    * sed 's/_cds//g' removes the string _cds if it exists in the header
-    * cut -d_ -f1,2 removes the second underscore and everything after it
-    double curly braces escape snakemake and are parsed as single curly braces in the shell command
+    Some tools require decompressed files.
     '''
     input: "inputs/genbank/{accession}_cds_from_genomic.fna.gz"
     output: "outputs/genbank/{accession}_cds_from_genomic.fna"
-    benchmark: "benchmarks/shorten_gene_names/{accession}.tsv"
+    benchmark: "benchmarks/decompress_reference_genomes/{accession}.tsv"
     shell:'''
-    gunzip -c {input} | awk '{{print $1;next}}1' | sed 's/lcl|//g' | sed 's/_cds//g' | cut -d_ -f1,2 > {output}
+    gunzip -c {input} > {output}
     '''
 
 ###################################################
@@ -90,6 +84,7 @@ rule shorten_gene_names_for_codonw:
 ###################################################
 
 checkpoint accessions_to_genus:
+    #input: metadata="inputs/venoms.tsv"
     input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
     '''
     The input metadata file defines the taxonomic lineage of each of the input genomes.
@@ -115,6 +110,17 @@ rule combine_cds_per_genus:
     cat {input} > {output}
     '''
 
+rule combine_and_parse_gff_per_genus:
+    '''
+    Using the class checkpoint_accessions_to_genus, this rule combines all GFF annotation files from all accessions that belong to a given genus into one file.
+    After pangenome clustering, this file will be used to retrieve information (genomic coords, etc) for rep sequences.
+    '''
+    input: gff = checkpoint_accessions_to_genus('inputs/genbank/{accession}_genomic.gff.gz')
+    output: gff = "outputs/genus_pangenome_raw/{genus}_gff_info.tsv"
+    benchmark: "benchmarks/combine_gff_per_genus/{genus}.tsv"
+    conda: "envs/tidyverse.yml"
+    script: "scripts/combine_and_parse_gff_per_genus.R"
+
 rule build_genus_pangenome:
     '''
     This rule clusters all CDS sequences from all accessions in a given genus into a pangenome.
@@ -125,7 +131,9 @@ rule build_genus_pangenome:
     0.9 https://www.pnas.org/doi/abs/10.1073/pnas.2009974118
     '''
     input: "outputs/genus_pangenome_raw/{genus}_cds.fna"
-    output: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
+    output: 
+        "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta",
+        "outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv"
     conda: "envs/mmseqs2.yml"
     benchmark:"benchmarks/genus_pangenome/{genus}.tsv"
     params: outprefix = lambda wildcards: "outputs/genus_pangenome_clustered/" + wildcards.genus + "_cds"
@@ -134,6 +142,9 @@ rule build_genus_pangenome:
     '''
 
 rule translate_pangenome:
+    '''
+    Translate the representative pangenome sequences from nucleotide to amino acid
+    '''
     input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
     output: "outputs/genus_pangenome_clustered/{genus}_aa_rep_seq.fasta"
     conda: "envs/emboss.yml"
@@ -146,19 +157,16 @@ rule translate_pangenome:
 ## DNA compositional screen
 ###################################################
 
-rule compositional_scans_codonw:
+rule compositional_scans_pepstats:
     '''
-    This rule uses codonw to estimate a variety of codon bias indices for each coding domain sequence in a genus' pangenome.
-    RAAU stands for relative amino acid usage.
+    This rule uses emboss pepstats to calculate relative amino acid usage per pangenome seq
     '''
-    input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
-    output: 
-        indices="outputs/compositional_scans_codonw/{genus}_indices.txt",
-        raau='outputs/compositional_scans_codonw/{genus}_raau.txt'
-    conda: "envs/codonw.yml"
-    benchmark: "benchmarks/compositional_scans_codonw/{genus}.tsv"
+    input: "outputs/genus_pangenome_clustered/{genus}_aa_rep_seq.fasta"
+    output: 'outputs/compositional_scans_pepstats/{genus}_pepstats.txt'
+    conda: "envs/emboss.yml"
+    benchmark: "benchmarks/compositional_scans_pepstats/{genus}.tsv"
     shell:'''
-    codonw {input} {output.indices} {output.raau} -all_indices -nomenu -machine -silent -raau
+    pepstats -sequence {input} -outfile {output}
     '''
 
 rule compositional_scans_to_hgt_candidates:
@@ -166,8 +174,7 @@ rule compositional_scans_to_hgt_candidates:
     This script performs hierarchical clustering on genes based on their relative amino acid usage and identifies clusters with fewer than 150 genes. 
     The output is a list of genes that belong to these small clusters, which are considered HGT candidates.
     '''
-    input:
-        raau='outputs/compositional_scans_codonw/{genus}_raau.txt',
+    input: raau='outputs/compositional_scans_pepstats/{genus}_pepstats.txt',
     output: 
         tsv="outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv",
         gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_gene_lst.txt"
@@ -193,7 +200,9 @@ rule blast_against_clustered_nr:
     benchmark: "benchmarks/blast_against_clustered_nr/{genus}.tsv"
     threads: 16
     shell:'''
-    diamond blastp --db {input.db} --query {input.query} --out {output} --outfmt 6 --max-target-seqs 100 --threads {threads} --faster
+    diamond blastp --db {input.db} --query {input.query} --out {output} \
+        --outfmt 6  qseqid qtitle sseqid stitle pident approx_pident length mismatch gapopen qstart qend qlen qcovhsp sstart send slen scovhsp evalue bitscore score corrected_bitscore  \
+        --max-target-seqs 100 --threads {threads} --faster
     '''
 
 rule blast_add_taxonomy_info:
@@ -281,7 +290,7 @@ rule eggnog_hgt_candidates:
     params:
         outdir="outputs/hgt_candidates_annotation/eggnog/",
         dbdir = "inputs/eggnog_db" 
-    threads: 4
+    threads: 8
     benchmark: "benchmarks/eggnog_hgt_candidates/{genus}.tsv"
     shell:'''
     mkdir -p tmp
@@ -291,11 +300,22 @@ rule eggnog_hgt_candidates:
        --data_dir {params.dbdir}
     '''
 
-rule download_antismash_hmms:
+rule hmmscan_hgt_candidates:
+    '''
+    Using the hmm file built in make_hmm_db.snakefile, this rule uses hidden markov models to annotate specific protein classes of interest.
+    At the moment it targets viruses and biosynthetic gene clusters, but the HMM file can be expanded in the aforementioned snakefile as desired. 
+    '''
     input:
+        hmmdb="inputs/hmms/all_hmms.hmm",
+        fa="outputs/hgt_candidates/{genus}_aa.fasta"
     output:
+        tblout="outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout",
+        out="outputs/hgt_candidates_annotation/hmmscan/{genus}.out"
+    conda: "envs/hmmer.yml"
+    threads: 8
+    benchmark: "benchmarks/hmmscan_hgt_candidates/{genus}.tsv"
     shell:'''
-    
+    hmmscan --cpu {threads} --tblout {output.tblout} -o {output.out} {input.hmmdb} {input.fa}
     '''
 
 ###################################################
@@ -303,12 +323,20 @@ rule download_antismash_hmms:
 ###################################################
 
 rule combine_results:
+    '''
+    Combine all of the results into a single mega TSV file.
+    The results are joined either on the genus or on the HGT candidate gene name, derived from the pangenome FASTA file.
+    '''
     input: 
         compositional = expand("outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv", genus = GENUS),
         blast = expand("outputs/blast_hgt_candidates/{genus}_blast_scores.tsv", genus = GENUS),
         eggnog = expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS),
+        hmmscan = expand("outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout", genus = GENUS),
+        acc_to_genus = expand("outputs/accessions_to_genus/{genus}.csv", genus = GENUS),
+        pangenome_cluster = expand("outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv", genus = GENUS),
+        gff = expand("outputs/genus_pangenome_raw/{genus}_gff_info.tsv", genus = GENUS)
     output: 
-        all_results = "outputs/hgt_candidates_final/results.tsv",
-        method_tally = "outputs/hgt_candidates_final/method_tally.tsv"
+        all_results = "outputs/hgt_candidates_final/results_fungi.tsv",
+        method_tally = "outputs/hgt_candidates_final/method_tally_fungi.tsv"
     conda: "envs/tidyverse.yml"
     script: "scripts/combine_results.R"
