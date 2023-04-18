@@ -32,7 +32,7 @@ class checkpoint_accessions_to_genus:
         return p
 
 
-#metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
+# metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
 metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
@@ -44,8 +44,7 @@ GENUS = metadata['genus'].unique().tolist()
 
 rule all:
     input: 
-        "outputs/hgt_candidates_final/results_fungi.tsv",
-        expand("outputs/genus_pangenome_raw/{genus}.gff", genus = GENUS)
+        "outputs/hgt_candidates_final/results_fungi.tsv"
         
 ###################################################
 ## download references
@@ -70,6 +69,9 @@ rule download_reference_genomes:
     '''
 
 rule decompress_genome:
+    '''
+    Some tools require decompressed files.
+    '''
     input: "inputs/genbank/{accession}_cds_from_genomic.fna.gz"
     output: "outputs/genbank/{accession}_cds_from_genomic.fna"
     benchmark: "benchmarks/decompress_reference_genomes/{accession}.tsv"
@@ -140,6 +142,9 @@ rule build_genus_pangenome:
     '''
 
 rule translate_pangenome:
+    '''
+    Translate the representative pangenome sequences from nucleotide to amino acid
+    '''
     input: "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta"
     output: "outputs/genus_pangenome_clustered/{genus}_aa_rep_seq.fasta"
     conda: "envs/emboss.yml"
@@ -296,6 +301,10 @@ rule eggnog_hgt_candidates:
     '''
 
 rule hmmscan_hgt_candidates:
+    '''
+    Using the hmm file built in make_hmm_db.snakefile, this rule uses hidden markov models to annotate specific protein classes of interest.
+    At the moment it targets viruses and biosynthetic gene clusters, but the HMM file can be expanded in the aforementioned snakefile as desired. 
+    '''
     input:
         hmmdb="inputs/hmms/all_hmms.hmm",
         fa="outputs/hgt_candidates/{genus}_aa.fasta"
@@ -314,6 +323,10 @@ rule hmmscan_hgt_candidates:
 ###################################################
 
 rule combine_results:
+    '''
+    Combine all of the results into a single mega TSV file.
+    The results are joined either on the genus or on the HGT candidate gene name, derived from the pangenome FASTA file.
+    '''
     input: 
         compositional = expand("outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv", genus = GENUS),
         blast = expand("outputs/blast_hgt_candidates/{genus}_blast_scores.tsv", genus = GENUS),
