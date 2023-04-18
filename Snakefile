@@ -107,7 +107,7 @@ rule combine_cds_per_genus:
     output: "outputs/genus_pangenome_raw/{genus}_cds.fna"
     benchmark: "benchmarks/combine_cds_per_genus/{genus}.tsv"
     shell:'''
-    zcat {input} > {output}
+    cat {input} > {output}
     '''
 
 rule combine_and_parse_gff_per_genus:
