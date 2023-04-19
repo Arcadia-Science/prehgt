@@ -89,7 +89,7 @@ lca <- function(lineage_df){
 # read BLAST results ---------------------------------------------------
 
 # read in BLAST results
-#blast <- read_tsv("outputs/blast_diamond/Microplitis_vs_clustered_nr_lineages.tsv", col_types = "ccccdddddddddddddddddccccccccc")
+# blast <- read_tsv("outputs/blast_diamond/Microplitis_vs_clustered_nr_lineages.tsv", col_types = "ccccdddddddddddddddddccccccccc")
 blast <- read_tsv(snakemake@input[['tsv']], col_types = "ccccdddddddddddddddddccccccccc")
 # edit kingdom to seven categories
 blast <- blast %>%
@@ -123,21 +123,24 @@ donor_groups <- groups[!groups %in% acceptor_group]
 blast <- blast %>%
   # filter out exact matches as these should not be used for calculation of indices. 
   # bc of clustering, not every input protein will have a perfect match in the database
-  filter(evalue != 0 & pident != 100) %>%
+  # This is a hacky way of doing this -- it looks for whether the nr match is in the query header. 
+  # The CDS from genbank should have these.
+  # I like it better than filtering on pident/evalue bc those might be legitimate matches
+  filter(!str_detect(string = qseqid, pattern = sseqid)) %>%
   # filter out matches to groups outside of the defined donor/acceptor groups
   # and those with missing values
   filter(kingdom %in% c(donor_groups, acceptor_group)) %>%
   # filter out matches with a pident < 30%? bitscore 100? NEED INPUT
-  filter(bitscore >= 100)
+  filter(corrected_bitscore >= 100)
 
 # calculate the max_bitscore and the min_evalue for each donor group and the acceptor group per query
-blast2 <- blast %>%
+best_match_per_group_values <- blast %>%
   group_by(qseqid, kingdom) %>%
   summarise(max_bitscore = max(corrected_bitscore),
             min_evalue = min(evalue))
 
 # retrieve the best match and its pident and lineage for each group
-blast3 <- blast %>%
+best_match_per_group_identities <- blast %>%
   group_by(qseqid, kingdom) %>%
   slice_max(corrected_bitscore) %>%
   slice_min(evalue) %>%
@@ -148,13 +151,13 @@ blast3 <- blast %>%
   select(qseqid, kingdom, best_match = sseqid, best_match_lineage, best_match_pident = pident)
 
 # calculate the number of matches observed per group per query
-blast4 <- blast %>%
+num_matches_per_group <- blast %>%
   group_by(qseqid, kingdom) %>% 
   tally() %>%
   select(qseqid, kingdom, num_matches_per_group = n)
 
-combined <- left_join(blast2, blast3, by = c("qseqid", "kingdom")) %>%
-  left_join(blast4, by = c("qseqid", "kingdom"))
+combined <- left_join(best_match_per_group_values, best_match_per_group_identities, by = c("qseqid", "kingdom")) %>%
+  left_join(num_matches_per_group, by = c("qseqid", "kingdom"))
 
 # calculate HGT indices and predict candidate CDSs ------------------------
 
