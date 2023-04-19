@@ -129,7 +129,7 @@ hmmscan <- unlist(snakemake@input[['hmmscan']]) %>%
 
 pangenome_size <- unlist(snakemake@input[['acc_to_genus']]) %>%
   #Sys.glob("outputs/accessions_to_genus/*.csv") %>%
-  map_dfr(read_csv) %>%
+  map_dfr(read_csv, col_types = "ccccccccccccccc") %>%
   group_by(genus) %>%
   tally() %>%
   select(genus, pangenome_size = n) %>%
@@ -139,7 +139,7 @@ pangenome_size <- unlist(snakemake@input[['acc_to_genus']]) %>%
 pangenome_cluster_sizes <- unlist(snakemake@input[['pangenome_cluster']]) %>%
   # Sys.glob("outputs/genus_pangenome_clustered/*_cds_cluster.tsv") %>%
   set_names() %>%
-  map_dfr(read_tsv, col_names = c("rep", "member"), .id = "genus") %>%
+  map_dfr(read_tsv, col_types = "cc", col_names = c("rep", "member"), .id = "genus") %>%
   mutate(genus = gsub("_cds_cluster.tsv", "", basename(genus))) %>%
   mutate(rep = paste0(rep, "_1")) %>%
   filter(rep %in% c(compositional$hgt_candidate, blast$hgt_candidate)) %>%
@@ -151,7 +151,8 @@ pangenome_cluster_sizes <- unlist(snakemake@input[['pangenome_cluster']]) %>%
 # join with gff information -----------------------------------------------
 
 gff <- unlist(snakemake@input[['gff']]) %>%
-  map_dfr(read_tsv)
+# gff <- Sys.glob('outputs/genus_pangenome_raw/*gff_info.tsv') %>%
+  map_dfr(read_tsv, col_types = "cccddccdcdcdcccccclccddccllccc")
 
 hgt_candidates <- data.frame(hgt_candidate = c(blast$hgt_candidate, compositional$hgt_candidate))
 
