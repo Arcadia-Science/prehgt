@@ -57,7 +57,7 @@ read_tblout <- function(file, type){
 compositional <- unlist(snakemake@input[['compositional']]) %>%
 #compositional <- Sys.glob("outputs/compositional_scans_hgt_candidates/*_clusters.tsv") %>%
   set_names() %>%
-  map_dfr(read_tsv, .id = "genus") %>%
+  map_dfr(read_tsv, col_types = "ccd", .id = "genus") %>%
   mutate(genus = gsub("_clusters.tsv", "", basename(genus))) %>%
   rename(RAAU_cluster = cluster)
 
@@ -78,7 +78,7 @@ for(file in blast_files){
 
 blast <- blast_files_with_results %>%
   set_names() %>%
-  map_dfr(read_tsv, .id = "genus") %>%
+  map_dfr(read_tsv, col_types = "ccddddcdddccdddcdc", .id = "genus") %>%
   rename_with( ~ paste0("blast_", .x)) %>%
   rename(hgt_candidate = blast_qseqid, genus = blast_genus) %>%
   mutate(genus = gsub("_blast_scores.tsv", "", basename(genus)))
@@ -89,7 +89,7 @@ blast <- blast_files_with_results %>%
 eggnog <- unlist(snakemake@input[['eggnog']]) %>%
 #eggnog <- Sys.glob("outputs/hgt_candidates_annotation/eggnog/*.emapper.annotations") %>%
   set_names() %>%
-  map_dfr(read_tsv, skip = 4, comment = "##", .id = "genus") %>%
+  map_dfr(read_tsv, col_types = "ccddccccccccccccccccc", skip = 4, comment = "##", .id = "genus") %>%
   clean_names() %>%
   rename_with( ~ paste0("eggnog_", .x)) %>%
   rename(hgt_candidate = eggnog_number_query, genus = eggnog_genus) %>%
