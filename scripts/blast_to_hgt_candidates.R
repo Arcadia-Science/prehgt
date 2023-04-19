@@ -103,7 +103,6 @@ blast <- blast %>%
                          "unclassified root kingdom",
                          "unclassified cellular organisms kingdom"))
 
-
 # set acceptor and donor groups -------------------------------------------
 
 # figure out the donor and acceptor groups from the BLAST results
@@ -134,18 +133,18 @@ blast <- blast %>%
 # calculate the max_bitscore and the min_evalue for each donor group and the acceptor group per query
 blast2 <- blast %>%
   group_by(qseqid, kingdom) %>%
-  summarise(max_bitscore = max(bitscore),
+  summarise(max_bitscore = max(corrected_bitscore),
             min_evalue = min(evalue))
 
 # retrieve the best match and its pident and lineage for each group
 blast3 <- blast %>%
   group_by(qseqid, kingdom) %>%
-  slice_max(bitscore) %>%
+  slice_max(corrected_bitscore) %>%
   slice_min(evalue) %>%
   slice_max(pident) %>%
   slice_head(n = 1) %>% # arbitrarily select the first if there are multiple
   mutate(best_match_lineage = paste(superkingdom, kingdom, phylum, class,
-                              order, family, genus, species, sep = ";")) %>%
+                                    order, family, genus, species, sep = ";")) %>%
   select(qseqid, kingdom, best_match = sseqid, best_match_lineage, best_match_pident = pident)
 
 # calculate the number of matches observed per group per query
