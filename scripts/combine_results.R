@@ -152,7 +152,7 @@ pangenome_cluster_sizes <- unlist(snakemake@input[['pangenome_cluster']]) %>%
 
 gff <- unlist(snakemake@input[['gff']]) %>%
 # gff <- Sys.glob('outputs/genus_pangenome_raw/*gff_info.tsv') %>%
-  map_dfr(read_tsv, col_types = "cccddccdcdcdcccccclccddccllccc")
+  map_dfr(read_tsv)
 
 hgt_candidates <- data.frame(hgt_candidate = c(blast$hgt_candidate, compositional$hgt_candidate))
 
