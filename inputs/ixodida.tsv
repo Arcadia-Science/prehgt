@@ -1,0 +1,10 @@
+organism_name	accession	source	superkingdom	kingdom	phylum	subphylum	class	subclass	order	suborder	superfamily	family	genus	species
+Rhipicephalus microplus	GCA_013339725.1	genome	Eukaryota	Metazoa	Arthropoda	Chelicerata	Arachnida	Acari	Ixodida	NA	Ixodoidea	Ixodidae	Rhipicephalus	Rhipicephalus microplus
+Ixodes scapularis	GCA_000208615.1	genome	Eukaryota	Metazoa	Arthropoda	Chelicerata	Arachnida	Acari	Ixodida	NA	Ixodoidea	Ixodidae	Ixodes	Ixodes scapularis
+Ixodes persulcatus	GCA_013358835.2	genome	Eukaryota	Metazoa	Arthropoda	Chelicerata	Arachnida	Acari	Ixodida	NA	Ixodoidea	Ixodidae	Ixodes	Ixodes persulcatus
+Hyalomma marginatum	GCA_910592865.1	genome	Eukaryota	Metazoa	Arthropoda	Chelicerata	Arachnida	Acari	Ixodida	NA	Ixodoidea	Ixodidae	Hyalomma	Hyalomma marginatum
+Hyalomma marginatum	GCA_910592695.1	genome	Eukaryota	Metazoa	Arthropoda	Chelicerata	Arachnida	Acari	Ixodida	NA	Ixodoidea	Ixodidae	Hyalomma	Hyalomma marginatum
+Rhipicephalus sanguineus	GCA_013339695.2	genome	Eukaryota	Metazoa	Arthropoda	Chelicerata	Arachnida	Acari	Ixodida	NA	Ixodoidea	Ixodidae	Rhipicephalus	Rhipicephalus sanguineus
+Haemaphysalis longicornis	GCA_013339765.2	genome	Eukaryota	Metazoa	Arthropoda	Chelicerata	Arachnida	Acari	Ixodida	NA	Ixodoidea	Ixodidae	Haemaphysalis	Haemaphysalis longicornis
+Hyalomma asiaticum	GCA_013339685.2	genome	Eukaryota	Metazoa	Arthropoda	Chelicerata	Arachnida	Acari	Ixodida	NA	Ixodoidea	Ixodidae	Hyalomma	Hyalomma asiaticum
+Dermacentor silvarum	GCA_013339745.2	genome	Eukaryota	Metazoa	Arthropoda	Chelicerata	Arachnida	Acari	Ixodida	NA	Ixodoidea	Ixodidae	Dermacentor	Dermacentor silvarum

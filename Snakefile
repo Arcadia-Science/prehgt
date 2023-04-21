@@ -32,8 +32,7 @@ class checkpoint_accessions_to_genus:
         return p
 
 
-metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
-#metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
+metadata = pd.read_csv("inputs/ixodida.tsv", header = 0, sep = "\t")
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
@@ -44,7 +43,7 @@ GENUS = metadata['genus'].unique().tolist()
 
 rule all:
     input: 
-        "outputs/hgt_candidates_final/results_venoms.tsv"
+        "outputs/hgt_candidates_final/results_ixodida.tsv"
         
 ###################################################
 ## download references
@@ -84,8 +83,7 @@ rule decompress_genome:
 ###################################################
 
 checkpoint accessions_to_genus:
-    input: metadata="inputs/venoms.tsv"
-    #input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
+    input: metadata="inputs/ixodida.tsv"
     '''
     The input metadata file defines the taxonomic lineage of each of the input genomes.
     This rule creates a CSV file with all of the genomes that belong to a given genus.
@@ -342,7 +340,7 @@ rule combine_results:
         pangenome_cluster = expand("outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv", genus = GENUS),
         gff = expand("outputs/genus_pangenome_raw/{genus}_gff_info.tsv", genus = GENUS)
     output: 
-        all_results = "outputs/hgt_candidates_final/results_venoms.tsv",
-        method_tally = "outputs/hgt_candidates_final/method_tally_venoms.tsv"
+        all_results = "outputs/hgt_candidates_final/results_ixodida.tsv",
+        method_tally = "outputs/hgt_candidates_final/method_tally_ixodida.tsv"
     conda: "envs/tidyverse.yml"
     script: "scripts/combine_results.R"
