@@ -130,9 +130,14 @@ blast <- blast %>%
   # filter out matches to groups outside of the defined donor/acceptor groups
   # and those with missing values
   filter(kingdom %in% c(donor_groups, acceptor_group)) %>%
+  # arolysin example: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3424411/
+  # based on arolysin example: if corrected_bitscore is less than 100, make sure the length of the match is >70% of the original protein
   # filter out matches with a pident < 30%? bitscore 100? NEED INPUT
-  filter(corrected_bitscore >= 100)
-
+  mutate(keep = ifelse(corrected_bitscore >= 100, "keep",
+                       ifelse(qcovhsp >=0.7, "keep", "filter"))) %>%
+  filter(keep == "keep") %>%
+  select(-keep)
+  
 # calculate the max_bitscore and the min_evalue for each donor group and the acceptor group per query
 best_match_per_group_values <- blast %>%
   group_by(qseqid, kingdom) %>%
