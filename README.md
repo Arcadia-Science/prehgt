@@ -1,4 +1,4 @@
-# rehgt: Recent Eukaryotic Horizontal Gene Transfer
+# rehgt: Recent Horizontal Gene Transfer
 
 The goal of this repository is to develop a lightweight, automated, and scalable approach for pre-screening Eukaryotic genomes or transcriptomes for recent horizontal gene transfer (HGT).
 Phylogenetic analysis involving species and gene tree construction are considered the gold standard methods for HGT detection, but these methods are computationally expensive and often don't scale to thousands of genomes.
