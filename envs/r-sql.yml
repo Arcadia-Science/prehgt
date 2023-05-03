@@ -4,5 +4,6 @@ channels:
    - defaults
 dependencies:
    - r-tidyverse=2.0.0
-   - r-janitor=2.2.0
-   - r-fastcluster=1.2.3
+   - r-dbplyr=2.3.2
+   - r-dbi=1.1.3
+   - r-rsqlite=2.3.0 

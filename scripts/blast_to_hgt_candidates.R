@@ -1,0 +1,235 @@
+library(tidyverse)
+
+# definitions -------------------------------------------------------------
+
+# * acceptor group: The kingdom of the BLASTP query protein
+# * donor group: For this script, the donor group is defined as six of seven NCBI kingdoms.
+#   (bacteria, fungi, archaea, viruses, metazoans, plants, and other eukaryote species). 
+#   The held-out kingdom is the kingdom of the acceptor group
+
+# functions ---------------------------------------------------------------
+
+# define a function to calculate the AI value
+alien_index <- function(e_donor, e_acceptor) {
+  # * alien_index: "An AI > 0 indicates a better hit to candidate donor than 
+  #   recipient taxa and a possible HGT. Higher AI represent higher gap of E-values 
+  #   between candidate donor and recipient and a more likely HGT" (10.3390/genes8100248).
+  #   Because it is based on e_value, the alien index is affected by the size of 
+  #   the BLAST database.
+  # * e_donor: best (lowest) e_value among all BLAST matches for a given donor group
+  # * e_acceptor: best (lowest) e_value among all BLAST matches for the acceptor group
+  ai <- log(e_acceptor + 1e-200) - log(e_donor + 1e-200)
+  return(ai)
+}
+
+# define a function to calculate the percent difference between two bitscores
+hgt_index <- function(bitscore_donor, bitscore_acceptor) {
+  # * hgt_index: Should not be affected by size of the BLAST database.
+  # * bitscore_donor: best (highest) bitscore_value among all BLAST matches for a given donor group
+  # * bitscore_acceptor: best (highest) bitscore_value among all BLAST matches for the acceptor group
+  # the 200 is a simplification of /2 * 100
+  diff <- (bitscore_donor - bitscore_acceptor) * 200 / (bitscore_donor + bitscore_acceptor)
+  return(diff)
+}
+
+# define a function to calculate how distributed a protein is
+donor_distribution_index <- function(n, num_matches_per_group){
+  # * donor distribution_index: a measure of the distribution of the gene across the 
+  #   tree of life. Excluding matches within the acceptor group, the top 50 BLAST
+  #   matches should belong to species in the actual donor group. A distribution_index > 0.8
+  #   "indicates that most of the top 50 hits belong to a given donor group" (10.1016/j.molp.2022.02.001).
+  #   Adapted from the tissue specificity index developed in 10.1093/bioinformatics/bti042.
+  # * n: the number of donor groups
+  # * num_matches_per_group: number of species per donor group. 
+  #   Formatted as a vector of the number of matches for all of the donor group.
+  #   If the length of the vector is < n, the function will back-add zeroes, 
+  #   indicating no observations for some donor groups. 
+  # * max_num_matches: maximum number of matches per group among all groups
+  
+  # if the length of the input vector given is less than n, backfill it with zeros (e.g. no observations for some donor groups)
+  if(length(num_matches_per_group) < n){
+    backadd <- rep(x = 0, times = n - length(num_matches_per_group))
+    num_matches_per_group <- c(num_matches_per_group, backadd)
+  }
+  max_num_matches <- max(num_matches_per_group)
+  donor_distribution_index <- sum(1 - (num_matches_per_group/max_num_matches)) / (n - 1)
+  return(donor_distribution_index)
+}
+
+lca <- function(lineage_df){
+  # given a data frame with lineage columns kingdom, phylum, class, order,
+  # genus, and species, calculate the taxonomy level that the lowest common 
+  # ancestor of all observations.
+  lineage_df <- lineage_df %>%
+    # group by query protein id
+    group_by(qseqid) %>%
+    # count how many of each taxonomic lineage level was observed
+    mutate(n_distinct_kingdom = n_distinct(kingdom),
+           n_distinct_phylum = n_distinct(phylum),
+           n_distinct_class = n_distinct(class),
+           n_distinct_order = n_distinct(order),
+           n_distinct_genus = n_distinct(genus),
+           n_distinct_species = n_distinct(species)) %>%
+    ungroup() %>%
+    # keep only the query id and tallying columns
+    select(qseqid, starts_with("n_distinct")) %>%
+    # filter to distinct
+    distinct() %>%
+    # figure out which level the LCA occurs at
+    mutate(acceptor_lca_level = ifelse(n_distinct_species == 1, "species",
+                                       ifelse(n_distinct_genus == 1, "genus",
+                                              ifelse(n_distinct_order == 1, "order",
+                                                     ifelse(n_distinct_class == 1, "class",
+                                                            ifelse(n_distinct_phylum == 1, "phylum", "kingdom")))))) %>%
+    select(qseqid, acceptor_lca_level)
+  
+  return(lineage_df)
+}
+
+# read BLAST results ---------------------------------------------------
+
+# read in BLAST results
+# blast <- read_tsv("outputs/blast_diamond/Microplitis_vs_clustered_nr_lineages.tsv", col_types = "ccccdddddddddddddddddccccccccc")
+blast <- read_tsv(snakemake@input[['tsv']], col_types = "ccccdddddddddddddddddccccccccc")
+# edit kingdom to seven categories
+blast <- blast %>%
+  mutate(kingdom = ifelse(kingdom == "unclassified Bacteria kingdom", "Bacteria", kingdom),
+         kingdom = ifelse(kingdom %in% c('Bamfordvirae', 'unclassified Viruses kingdom', 'Heunggongvirae', 'Orthornavirae'), "Virus", kingdom),
+         kingdom = ifelse(kingdom == "unclassified Archaea kingdom", "Archaea", kingdom),
+         kingdom = ifelse(kingdom == "unclassified Eukaryota kingdom", "Other Eukaryota", kingdom)) %>%
+  # filter out unclassified. Matches are to synthetic constructs that don't have taxonomies, or to clusters that don't have a superkingdom LCA (taxid 0)
+  filter(!kingdom %in% c("unclassified unclassified entries kingdom",
+                         "unclassified other entries kingdom",
+                         "unclassified root kingdom",
+                         "unclassified cellular organisms kingdom"))
+
+# set acceptor and donor groups -------------------------------------------
+
+# figure out the donor and acceptor groups from the BLAST results
+groups <- c('Viridiplantae', 'Bacteria', 'Other Eukaryota', 'Metazoa', 'Archaea', 'Virus', 'Fungi')
+# tally the total number of blast hits per kingdom in the full set of results
+kingdom_tally <- blast %>% 
+  group_by(kingdom) %>%
+  tally()
+
+# set the value of the acceptor group to the group with the highest number of BLAST matches
+acceptor_group <- kingdom_tally[which.max(kingdom_tally$n), 1]$kingdom
+# set the value of the donor groups to everything except the acceptor group
+donor_groups <- groups[!groups %in% acceptor_group]  
+
+# parse BLAST results -----------------------------------------------------
+
+# filter the BLAST matches
+blast <- blast %>%
+  # filter out exact matches as these should not be used for calculation of indices. 
+  # bc of clustering, not every input protein will have a perfect match in the database
+  # This is a hacky way of doing this -- it looks for whether the nr match is in the query header. 
+  # The CDS from genbank should have these.
+  # I like it better than filtering on pident/evalue bc those might be legitimate matches
+  filter(!str_detect(string = qseqid, pattern = sseqid)) %>%
+  # filter out matches to groups outside of the defined donor/acceptor groups
+  # and those with missing values
+  filter(kingdom %in% c(donor_groups, acceptor_group)) %>%
+  # aerolysin example: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3424411/
+  # based on aerolysin example: if corrected_bitscore is less than 100, make sure the length of the match is >70% of the original protein
+  # filter out matches with a pident < 30%? bitscore 100? NEED INPUT
+  mutate(keep = ifelse(corrected_bitscore >= 100, "keep",
+                       ifelse(qcovhsp >=0.7, "keep", "filter"))) %>%
+  filter(keep == "keep") %>%
+  select(-keep)
+  
+# calculate the max_bitscore and the min_evalue for each donor group and the acceptor group per query
+best_match_per_group_values <- blast %>%
+  group_by(qseqid, kingdom) %>%
+  summarise(max_bitscore = max(corrected_bitscore),
+            min_evalue = min(evalue))
+
+# retrieve the best match and its pident and lineage for each group
+best_match_per_group_identities <- blast %>%
+  group_by(qseqid, kingdom) %>%
+  slice_max(corrected_bitscore) %>%
+  slice_min(evalue) %>%
+  slice_max(pident) %>%
+  slice_head(n = 1) %>% # arbitrarily select the first if there are multiple
+  mutate(best_match_lineage = paste(superkingdom, kingdom, phylum, class,
+                                    order, family, genus, species, sep = ";")) %>%
+  select(qseqid, kingdom, best_match = sseqid, best_match_lineage, best_match_pident = pident)
+
+# calculate the number of matches observed per group per query
+num_matches_per_group <- blast %>%
+  group_by(qseqid, kingdom) %>% 
+  tally() %>%
+  select(qseqid, kingdom, num_matches_per_group = n)
+
+combined <- left_join(best_match_per_group_values, best_match_per_group_identities, by = c("qseqid", "kingdom")) %>%
+  left_join(num_matches_per_group, by = c("qseqid", "kingdom"))
+
+# calculate HGT indices and predict candidate CDSs ------------------------
+
+# filter out BLAST results where all matches were within the acceptor group
+only_acceptor_group_matches <- combined %>%
+  group_by(qseqid) %>%
+  tally() %>%
+  filter(n == 1)
+
+candidates <- combined %>%
+  filter(!qseqid %in% only_acceptor_group_matches$qseqid)
+
+# separate candidates into donor and acceptor groups and reformat, and then re-join together to calculate indices
+candidates_acceptor <- candidates %>%
+  filter(kingdom == acceptor_group) %>%
+  select(qseqid, acceptor_group = kingdom, 
+         acceptor_max_bitscore = max_bitscore,
+         acceptor_min_evalue = min_evalue, 
+         acceptor_num_matches_per_group = num_matches_per_group,
+         acceptor_max_pident = best_match_pident)
+
+candidates_donor <- candidates %>%
+  filter(kingdom %in% donor_groups) %>%
+  select(qseqid, donor_group = kingdom, 
+         donor_max_bitscore = max_bitscore,
+         donor_min_evalue = min_evalue, 
+         donor_num_matches_per_group = num_matches_per_group,
+         donor_best_match = best_match, 
+         donor_best_match_lineage = best_match_lineage, 
+         donor_best_match_pident = best_match_pident)
+
+# from candidate donor groups, calculate the donor distribution index
+donor_dist_index <- candidates_donor %>%
+  group_by(qseqid) %>%
+  mutate(donor_distribution_index = donor_distribution_index(n = length(donor_groups), 
+                                                             num_matches_per_group = donor_num_matches_per_group))
+
+# rejoin information together to calculate alien index and horizontal gene transfer index
+candidates <- left_join(candidates_acceptor, candidates_donor, by = "qseqid", multiple = "all")
+
+# calculate alien index and hgt index
+candidates <- candidates %>%
+  mutate(alien_index = alien_index(e_donor = donor_min_evalue, e_acceptor = acceptor_min_evalue),
+         hgt_index = hgt_index(bitscore_donor = donor_max_bitscore, bitscore_acceptor = acceptor_max_bitscore))
+
+# from the acceptor group, calculate how wide spread the protein is among other genomes in the acceptor group
+acceptor_lca <- blast %>% 
+  filter(qseqid %in% candidates_acceptor$qseqid) %>%
+  filter(kingdom %in% acceptor_group) %>%
+  lca()
+
+# join everything together
+candidates <- candidates %>%
+  left_join(acceptor_lca, by = "qseqid") %>%
+  left_join(donor_dist_index, by = c("qseqid", "donor_group", "donor_max_bitscore", 
+                                     "donor_min_evalue", "donor_num_matches_per_group",
+                                     "donor_best_match", "donor_best_match_lineage",
+                                     "donor_best_match_pident"))
+
+# filter; alien index > 0 "indicates a better hit to candidate donor than recipient taxa and a possible HGT" (10.3390/genes8100248).
+candidates <- candidates %>%
+  filter(alien_index > 0) %>%
+  mutate(HGT_score = ifelse(alien_index >= 45, "Highly likely HGT", "Likely contamination"),
+         HGT_score = ifelse(alien_index < 45 & alien_index > 15, "Likely HGT", HGT_score),
+         HGT_score = ifelse(alien_index < 15, "Possible HGT", HGT_score),
+         HGT_score = ifelse(donor_best_match_pident > 80, "Likely contamination", HGT_score))
+
+
+write_tsv(candidates, snakemake@output[['tsv']])
+write_tsv(candidates[ , 1], snakemake@output[['gene_lst']], col_names = F)
