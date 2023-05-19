@@ -1,4 +1,11 @@
+#!/usr/bin/env Rscript
 library(tidyverse)
+
+# command line args -------------------------------------------------------
+
+args <- commandArgs(trailingOnly = TRUE)
+out_tsv <- args[1]
+in_gffs <- args[2:length(args)]
 
 # function ----------------------------------------------------------------
 
@@ -24,10 +31,8 @@ parse_gff_attribute_field <- function(gff) {
 
 # read and parse ----------------------------------------------------------
 
-# accessions <- c("GCA_027627235.1", "GCA_013053245.1", "GCA_015484485.1")
-# gffs <- paste0("inputs/genbank/", accessions, "_genomic.gff.gz")
-gff <- unlist(snakemake@input[['gff']]) %>%
-  map_dfr(read_tsv, comment = "##", skip = 5,
+gff <- in_gffs %>%
+  map_dfr(read_tsv, comment = "#",
           col_names = c("seqid", "source", "feature", "start", "end", 
                         "score", "strand", "frame", "attribute"),
           col_types = "cccddcccc")
@@ -64,4 +69,4 @@ gff <- gff %>%
   distinct()
 
 # write out info
-write_tsv(gff, snakemake@output[['gff']])
+write_tsv(gff, out_tsv)
