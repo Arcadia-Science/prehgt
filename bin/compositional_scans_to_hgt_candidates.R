@@ -90,4 +90,3 @@ clusters <- clusters %>%
 write_tsv(clusters, pepstats_hgt_out)
 # write out a gene list to use extract CDS sequences of HGT candidates from FASTA
 write_tsv(clusters[1], gene_lst_out, col_names = F)
-
