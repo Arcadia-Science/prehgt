@@ -32,11 +32,15 @@ class checkpoint_accessions_to_genus:
         return p
 
 
-metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
-#metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
+#metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
+metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
+
+# remove Trametes String from genus list
+while("Trametes" in GENUS):
+    GENUS.remove("Trametes")
 
 # explanation of wildcards:
 # genus (defined by GENUS): All of the genera that the pipeline will be executed on. This is defined from an input metadata file. 
@@ -44,7 +48,7 @@ GENUS = metadata['genus'].unique().tolist()
 
 rule all:
     input: 
-        "outputs/hgt_candidates_final/results_venoms.tsv"
+        "outputs/hgt_candidates_final/results_fungi.tsv"
         
 ###################################################
 ## download references
@@ -84,8 +88,8 @@ rule decompress_genome:
 ###################################################
 
 checkpoint accessions_to_genus:
-    input: metadata="inputs/venoms.tsv"
-    #input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
+    #input: metadata="inputs/venoms.tsv"
+    input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
     '''
     The input metadata file defines the taxonomic lineage of each of the input genomes.
     This rule creates a CSV file with all of the genomes that belong to a given genus.
@@ -97,7 +101,7 @@ checkpoint accessions_to_genus:
     output: genus="outputs/accessions_to_genus/{genus}.csv",
     conda: "envs/tidyverse.yml"
     benchmark: "benchmarks/accessions_to_genus/{genus}.tsv"
-    script: "scripts/accessions_to_genus.R"
+    script: "bin/accessions_to_genus.R"
 
 rule combine_cds_per_genus:
     '''
@@ -119,7 +123,9 @@ rule combine_and_parse_gff_per_genus:
     output: gff = "outputs/genus_pangenome_raw/{genus}_gff_info.tsv"
     benchmark: "benchmarks/combine_gff_per_genus/{genus}.tsv"
     conda: "envs/tidyverse.yml"
-    script: "scripts/combine_and_parse_gff_per_genus.R"
+    shell:'''
+    bin/combine_and_parse_gff_per_genus.R {output} {input}
+    '''
 
 rule build_genus_pangenome:
     '''
@@ -177,10 +183,12 @@ rule compositional_scans_to_hgt_candidates:
     input: raau='outputs/compositional_scans_pepstats/{genus}_pepstats.txt',
     output: 
         tsv="outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv",
-        gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_gene_lst.txt"
+        gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_pepstats_gene_lst.txt"
     benchmark: "benchmarks/compositional_scans_to_hgt_candidates/{genus}.tsv"
     conda: "envs/tidyverse.yml"
-    script: "scripts/compositional_scans_to_hgt_candidates.R"
+    shell:'''
+    bin/compositional_scans_to_hgt_candidates.R {input.raau} {output.tsv} {output.gene_lst}
+    '''
 
 ###################################################
 ## BLASTP (diamond) against clustered nr
@@ -215,10 +223,11 @@ rule blast_add_taxonomy_info:
         tsv="outputs/blast_diamond/{genus}_vs_clustered_nr.tsv",
         sqldb="inputs/nr_cluster_taxid_formatted_final.sqlite" # downloaded from S3...TBD on how to make available, it's 63 GB
     output: tsv="outputs/blast_diamond/{genus}_vs_clustered_nr_lineages.tsv"
-    params: sqldb_tbl="nr_cluster_taxid_table"
     conda: "envs/r-sql.yml"
     benchmark: "benchmarks/blast_add_taxonomy_info/{genus}.tsv"
-    script: "scripts/blast_add_taxonomy_info.R"
+    shell:'''
+    bin/blastp_add_taxonomy_info.R {input.sqldb} {input.tsv} {output.tsv}
+    '''
 
 rule blast_to_hgt_candidates:
     '''
@@ -228,10 +237,13 @@ rule blast_to_hgt_candidates:
     '''
     input: tsv="outputs/blast_diamond/{genus}_vs_clustered_nr_lineages.tsv"
     output: 
-        gene_lst="outputs/blast_hgt_candidates/{genus}_gene_lst.txt",
-        tsv="outputs/blast_hgt_candidates/{genus}_blast_scores.tsv"
+        gene_lst="outputs/blast_hgt_candidates/{genus}_blastp_gene_lst.txt",
+        tsv="outputs/blast_hgt_candidates/{genus}_blastp_scores.tsv"
     conda: "envs/tidyverse.yml"
     benchmark: "benchmarks/blast_to_hgt_candidates/{genus}.tsv"
+    shell:'''
+    bin/blastp_to_hgt_candidates.R {input.tsv} {output.tsv} {output.gene_lst}
+    '''
     script: "scripts/blast_to_hgt_candidates.R"
 
 ###################################################
@@ -249,8 +261,8 @@ rule combine_hgt_candidates:
     '''
     input: 
        "outputs/blast_hgt_candidates/{genus}_gene_lst.txt",
-       "outputs/compositional_scans_hgt_candidates/{genus}_gene_lst.txt"
-    output: "outputs/hgt_candidates/{genus}_gene_lst.txt"
+       "outputs/compositional_scans_hgt_candidates/{genus}_pepstats_gene_lst.txt"
+    output: "outputs/hgt_candidates/{genus}_blastp_gene_lst.txt"
     conda: "envs/csvtk.yml"
     shell:'''
     cat {input} | csvtk freq -H -f 1 | csvtk cut -f 1 -o {output}
@@ -335,14 +347,19 @@ rule combine_results:
     '''
     input: 
         compositional = expand("outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv", genus = GENUS),
-        blast = expand("outputs/blast_hgt_candidates/{genus}_blast_scores.tsv", genus = GENUS),
+        blast = expand("outputs/blast_hgt_candidates/{genus}_blastp_scores.tsv", genus = GENUS),
         eggnog = expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS),
         hmmscan = expand("outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout", genus = GENUS),
         acc_to_genus = expand("outputs/accessions_to_genus/{genus}.csv", genus = GENUS),
         pangenome_cluster = expand("outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv", genus = GENUS),
         gff = expand("outputs/genus_pangenome_raw/{genus}_gff_info.tsv", genus = GENUS)
     output: 
-        all_results = "outputs/hgt_candidates_final/results_venoms.tsv",
-        method_tally = "outputs/hgt_candidates_final/method_tally_venoms.tsv"
+        #all_results = "outputs/hgt_candidates_final/results_venoms.tsv",
+        #method_tally = "outputs/hgt_candidates_final/method_tally_venoms.tsv"
+        all_results = "outputs/hgt_candidates_final/results_fungi.tsv",
+        method_tally = "outputs/hgt_candidates_final/method_tally_fungi.tsv"
     conda: "envs/tidyverse.yml"
+    shell:'''
+    bin/combine_results.R {input.compositional} {input.blast} # NEED TO UPDATE GENOMES INPUT; SO NEED TO UPDATE DOWNLOAD SCRIPT!
+    '''
     script: "scripts/combine_results.R"
