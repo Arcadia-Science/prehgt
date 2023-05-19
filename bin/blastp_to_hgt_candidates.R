@@ -1,4 +1,13 @@
+#!/usr/bin/env Rscript
 library(tidyverse)
+
+# command line args -------------------------------------------------------
+
+# read from command line arguments and set global variables
+args <- commandArgs(trailingOnly = TRUE)
+blast_tsv <- args[1]
+blast_hgt_out <- args[2]
+gene_lst_out <- args[3]
 
 # definitions -------------------------------------------------------------
 
@@ -90,7 +99,7 @@ lca <- function(lineage_df){
 
 # read in BLAST results
 # blast <- read_tsv("outputs/blast_diamond/Microplitis_vs_clustered_nr_lineages.tsv", col_types = "ccccdddddddddddddddddccccccccc")
-blast <- read_tsv(snakemake@input[['tsv']], col_types = "ccccdddddddddddddddddccccccccc")
+blast <- read_tsv(blast_tsv, col_types = "ccccdddddddddddddddddccccccccc")
 # edit kingdom to seven categories
 blast <- blast %>%
   mutate(kingdom = ifelse(kingdom == "unclassified Bacteria kingdom", "Bacteria", kingdom),
@@ -130,14 +139,14 @@ blast <- blast %>%
   # filter out matches to groups outside of the defined donor/acceptor groups
   # and those with missing values
   filter(kingdom %in% c(donor_groups, acceptor_group)) %>%
-  # aerolysin example: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3424411/
-  # based on aerolysin example: if corrected_bitscore is less than 100, make sure the length of the match is >70% of the original protein
+  # arolysin example: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3424411/
+  # based on arolysin example: if corrected_bitscore is less than 100, make sure the length of the match is >70% of the original protein
   # filter out matches with a pident < 30%? bitscore 100? NEED INPUT
   mutate(keep = ifelse(corrected_bitscore >= 100, "keep",
                        ifelse(qcovhsp >=0.7, "keep", "filter"))) %>%
   filter(keep == "keep") %>%
   select(-keep)
-  
+
 # calculate the max_bitscore and the min_evalue for each donor group and the acceptor group per query
 best_match_per_group_values <- blast %>%
   group_by(qseqid, kingdom) %>%
@@ -231,5 +240,5 @@ candidates <- candidates %>%
          HGT_score = ifelse(donor_best_match_pident > 80, "Likely contamination", HGT_score))
 
 
-write_tsv(candidates, snakemake@output[['tsv']])
-write_tsv(candidates[ , 1], snakemake@output[['gene_lst']], col_names = F)
+write_tsv(candidates, blast_hgt_out)
+write_tsv(candidates[ , 1], gene_lst_out <- args[3], col_names = F)
