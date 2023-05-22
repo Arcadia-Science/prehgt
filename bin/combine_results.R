@@ -84,7 +84,8 @@ compositional <- compositional_tsv %>%
   set_names() %>%
   map_dfr(read_tsv, col_types = "ccd", .id = "genus") %>%
   mutate(genus = gsub("_clusters.tsv", "", basename(genus))) %>%
-  rename(RAAU_cluster = cluster)
+  rename(RAAU_cluster = cluster) %>%
+  distinct()
 
 # read in BLAST results ---------------------------------------------------
 
@@ -104,7 +105,8 @@ blast <- blast_files_with_results %>%
   map_dfr(read_tsv, col_types = "ccddddcdddccdddcdc", .id = "genus") %>%
   rename_with( ~ paste0("blast_", .x)) %>%
   rename(hgt_candidate = blast_qseqid, genus = blast_genus) %>%
-  mutate(genus = gsub("_blastp_scores.tsv", "", basename(genus)))
+  mutate(genus = gsub("_blastp_scores.tsv", "", basename(genus))) %>%
+  distinct()
 
 # read in and parse pangenome information ---------------------------------
 
@@ -113,7 +115,8 @@ pangenome_size <- genomes_csv %>%
   group_by(genus) %>%
   tally() %>%
   select(genus, pangenome_size = n) %>%
-  ungroup()
+  ungroup() %>%
+  distinct()
 
 # report number of genes in pangenome cluster
 pangenome_cluster_sizes <- pangenome_cluster_tsv %>%
@@ -124,7 +127,8 @@ pangenome_cluster_sizes <- pangenome_cluster_tsv %>%
   filter(rep %in% c(compositional$hgt_candidate, blast$hgt_candidate)) %>%
   group_by(genus, rep) %>%
   tally() %>%
-  select(genus, hgt_candidate = rep, pangenome_num_genes_in_cluster = n)
+  select(genus, hgt_candidate = rep, pangenome_num_genes_in_cluster = n) %>%
+  distinct()
 
 # join with gff information -----------------------------------------------
 
@@ -137,7 +141,8 @@ gff <- gff %>%
   rowwise() %>%
   mutate(hgt_candidate = list(hgt_candidates$hgt_candidate[grepl(gff_protein_id, hgt_candidates$hgt_candidate)])) %>%
   ungroup() %>%
-  unnest(hgt_candidate)
+  unnest(hgt_candidate) %>%
+  distinct()
   
 # read in eggnog annotations ---------------------------------------------
 
@@ -147,7 +152,8 @@ eggnog <- eggnog_tsv %>%
   clean_names() %>%
   rename_with( ~ paste0("eggnog_", .x)) %>%
   rename(hgt_candidate = eggnog_number_query, genus = eggnog_genus) %>%
-  mutate(genus = gsub(".emapper.annotations", "", basename(genus)))
+  mutate(genus = gsub(".emapper.annotations", "", basename(genus))) %>%
+  distinct()
 
 
 # read in hmm annotations -------------------------------------------------
@@ -176,7 +182,8 @@ hmmscan <- hmmscan_tblout %>%
          hmmscan_sequence_bias = sequence_bias, hmmscan_best_domain_evalue = best_domain_evalue, 
          hmmscan_best_domain_score = best_domain_score) %>%
   left_join(hmm_descriptions,  by = c("hmmscan_domain_name" = "name")) %>%
-  relocate(hmmscan_description, .after = hmmscan_domain_name)  
+  relocate(hmmscan_description, .after = hmmscan_domain_name) %>%
+  distinct()
 
 # combine and write outputs -----------------------------------------------
 
@@ -192,7 +199,8 @@ all_candidates <- left_join(all_candidates, eggnog, by = c("hgt_candidate", "gen
   mutate(method = ifelse(hgt_candidate %in% blast$hgt_candidate, "blast", NA),
          method = ifelse(hgt_candidate %in% compositional$hgt_candidate, "raau", method),
          method = ifelse(hgt_candidate %in% blast$hgt_candidate & hgt_candidate %in% compositional$hgt_candidate, "both", method),
-         .after = hgt_candidate)
+         .after = hgt_candidate) %>%
+  distinct()
 
 write_tsv(all_candidates, all_results_tsv)
 
