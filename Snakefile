@@ -295,6 +295,7 @@ rule hmmscan_hgt_candidates:
     threads: 8
     benchmark: "benchmarks/hmmscan_hgt_candidates/{genus}.tsv"
     shell:'''
+    hmmpress {input.hmmdb}
     hmmscan --cpu {threads} --tblout {output.tblout} -o {output.out} {input.hmmdb} {input.fa}
     '''
 
