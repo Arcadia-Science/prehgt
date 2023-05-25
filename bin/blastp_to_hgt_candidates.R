@@ -241,4 +241,4 @@ candidates <- candidates %>%
 
 
 write_tsv(candidates, blast_hgt_out)
-write_tsv(candidates[ , 1], gene_lst_out <- args[3], col_names = F)
+write_tsv(candidates[ , 1], gene_lst_out <- args[3], col_names = FALSE)
