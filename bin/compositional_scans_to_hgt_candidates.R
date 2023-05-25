@@ -1,5 +1,14 @@
+#!/usr/bin/env Rscript
 library(tidyverse)
 library(fastcluster)
+
+# command line args -------------------------------------------------------
+
+# read from command line arguments and set global variables
+args <- commandArgs(trailingOnly = TRUE)
+pepstats_txt <- args[1]
+pepstats_hgt_out <- args[2]
+gene_lst_out <- args[3]
 
 # functions ---------------------------------------------------------------
 
@@ -41,8 +50,7 @@ parse_pepstats_to_amino_acid_frequencies <- function(content) {
 
 # read in data and parse --------------------------------------------------
 
-file_content <- readLines(snakemake@input[['raau']])
-#file_content <- readLines("sandbox/emboss/tmp.pepstats")
+file_content <- readLines(pepstats_txt)
 raau <- parse_pepstats_to_amino_acid_frequencies(file_content)
 print("RAAU parsing done.")
 
@@ -78,7 +86,7 @@ clusters <- clusters %>%
   filter(cluster %in% small_clusters$cluster) %>%
   rename(hgt_candidate = cds)
 
-# write out a gene list to use extract CDS sequences of HGT candidates from FASTA
-write_tsv(clusters[1], snakemake@output[['gene_lst']], col_names = F)
 # write out cluster membership file
-write_tsv(clusters, snakemake@output[['tsv']])
+write_tsv(clusters, pepstats_hgt_out)
+# write out a gene list to use extract CDS sequences of HGT candidates from FASTA
+write_tsv(clusters[1], gene_lst_out, col_names = FALSE)

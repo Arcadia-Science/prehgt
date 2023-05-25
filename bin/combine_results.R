@@ -1,7 +1,33 @@
+#!/usr/bin/env Rscript
 library(readr)
 library(dplyr)
 library(purrr)
+library(tidyr)
 library(janitor)
+
+# command line args -------------------------------------------------------
+
+args <- commandArgs(trailingOnly = TRUE)
+# inputs:
+compositional_tsv     <- args[1]
+blast_tsv             <- args[2]
+genomes_csv           <- args[3]
+pangenome_cluster_tsv <- args[4]
+gff_tsv               <- args[5]
+eggnog_tsv            <- args[6]
+hmmscan_tblout        <- args[7]
+# outputs:
+all_results_tsv       <- args[8]
+method_tally_tsv      <- args[9]
+
+# paths to test locally:
+# compositional_tsv <- "~/github/2023-rehgt-nextflow/out_full/compositional/Bigelowiella_clusters.tsv"
+# blast_tsv <- "~/github/2023-rehgt-nextflow/out_full/blastp/Bigelowiella_blastp_scores.tsv"
+# genomes_csv <- "~/github/2023-rehgt-nextflow/out_full/download/Bigelowiella_genomes.csv"
+# pangenome_cluster_tsv <- "~/github/2023-rehgt-nextflow/out_full/build/Bigelowiella_cluster.tsv"
+# gff_tsv <- "~/github/2023-rehgt-nextflow/out_full/combine/Bigelowiella_gff_info.tsv"
+# eggnog_tsv <- "~/github/2023-rehgt-nextflow/out_full/eggnog/Bigelowiella.emapper.annotations"
+# hmmscan_tblout <- "~/github/2023-rehgt-nextflow/out_full/hmmscan/Bigelowiella.tblout"
 
 # functions ---------------------------------------------------------------
 
@@ -54,22 +80,20 @@ read_tblout <- function(file, type){
 
 # read in outputs from compositional scans --------------------------------
 
-compositional <- unlist(snakemake@input[['compositional']]) %>%
-#compositional <- Sys.glob("outputs/compositional_scans_hgt_candidates/*_clusters.tsv") %>%
+compositional <- compositional_tsv %>%
   set_names() %>%
   map_dfr(read_tsv, col_types = "ccd", .id = "genus") %>%
   mutate(genus = gsub("_clusters.tsv", "", basename(genus))) %>%
-  rename(RAAU_cluster = cluster)
+  rename(RAAU_cluster = cluster) %>%
+  distinct()
 
 # read in BLAST results ---------------------------------------------------
 
 # check the number of rows for each input file
 # remove the files that only have 1 row, which means no BLAST results
-blast_files <- unlist(snakemake@input[['blast']])
-#blast_files <- Sys.glob("outputs/blast_hgt_candidates/*_blast_scores.tsv")
 blast_files_with_results <- character()
 i <- 1
-for(file in blast_files){
+for(file in blast_tsv){
   if(length(count_fields(file, tokenizer_tsv())) > 1){
     blast_files_with_results[i] <- file
     i <- i + 1
@@ -81,19 +105,56 @@ blast <- blast_files_with_results %>%
   map_dfr(read_tsv, col_types = "ccddddcdddccdddcdc", .id = "genus") %>%
   rename_with( ~ paste0("blast_", .x)) %>%
   rename(hgt_candidate = blast_qseqid, genus = blast_genus) %>%
-  mutate(genus = gsub("_blast_scores.tsv", "", basename(genus)))
+  mutate(genus = gsub("_blastp_scores.tsv", "", basename(genus))) %>%
+  distinct()
 
+# read in and parse pangenome information ---------------------------------
 
-# read in eggnog annotations ----------------------------------------------
+pangenome_size <- genomes_csv %>%
+  map_dfr(read_csv, col_types = "cc") %>%
+  group_by(genus) %>%
+  tally() %>%
+  select(genus, pangenome_size = n) %>%
+  ungroup() %>%
+  distinct()
 
-eggnog <- unlist(snakemake@input[['eggnog']]) %>%
-#eggnog <- Sys.glob("outputs/hgt_candidates_annotation/eggnog/*.emapper.annotations") %>%
+# report number of genes in pangenome cluster
+pangenome_cluster_sizes <- pangenome_cluster_tsv %>%
+  set_names() %>%
+  map_dfr(read_tsv, col_types = "cc", col_names = c("rep", "member"), .id = "genus") %>%
+  mutate(genus = gsub("_cluster.tsv", "", basename(genus))) %>%
+  mutate(rep = paste0(rep, "_1")) %>%
+  filter(rep %in% c(compositional$hgt_candidate, blast$hgt_candidate)) %>%
+  group_by(genus, rep) %>%
+  tally() %>%
+  select(genus, hgt_candidate = rep, pangenome_num_genes_in_cluster = n) %>%
+  distinct()
+
+# join with gff information -----------------------------------------------
+
+gff <- gff_tsv %>%
+  map_dfr(read_tsv)
+
+hgt_candidates <- data.frame(hgt_candidate = c(blast$hgt_candidate, compositional$hgt_candidate))
+
+gff <- gff %>%
+  rowwise() %>%
+  mutate(hgt_candidate = list(hgt_candidates$hgt_candidate[grepl(gff_protein_id, hgt_candidates$hgt_candidate)])) %>%
+  ungroup() %>%
+  unnest(hgt_candidate) %>%
+  distinct()
+  
+# read in eggnog annotations ---------------------------------------------
+
+eggnog <- eggnog_tsv %>%
   set_names() %>%
   map_dfr(read_tsv, col_types = "ccddccccccccccccccccc", skip = 4, comment = "##", .id = "genus") %>%
   clean_names() %>%
   rename_with( ~ paste0("eggnog_", .x)) %>%
   rename(hgt_candidate = eggnog_number_query, genus = eggnog_genus) %>%
-  mutate(genus = gsub(".emapper.annotations", "", basename(genus)))
+  mutate(genus = gsub(".emapper.annotations", "", basename(genus))) %>%
+  distinct()
+
 
 # read in hmm annotations -------------------------------------------------
 
@@ -106,8 +167,7 @@ vog_descriptions <- read_tsv("http://fileshare.csb.univie.ac.at/vog/latest/vog.a
   select(name = number_group_name, hmmscan_description = consensus_functional_description)
 hmm_descriptions <- bind_rows(hmm_descriptions, vog_descriptions)
 
-hmmscan <- unlist(snakemake@input[['hmmscan']]) %>%
-  #hmmscan <- Sys.glob("outputs/hgt_candidates_annotation/hmmscan/*.tblout") %>%
+hmmscan <- hmmscan_tblout %>%  
   set_names() %>%
   map_dfr(read_tblout, .id = "genus") %>%
   mutate(genus = gsub(".tblout", "", basename(genus))) %>%
@@ -122,53 +182,14 @@ hmmscan <- unlist(snakemake@input[['hmmscan']]) %>%
          hmmscan_sequence_bias = sequence_bias, hmmscan_best_domain_evalue = best_domain_evalue, 
          hmmscan_best_domain_score = best_domain_score) %>%
   left_join(hmm_descriptions,  by = c("hmmscan_domain_name" = "name")) %>%
-  relocate(hmmscan_description, .after = hmmscan_domain_name)
-
-
-# read in and parse pangenome information ---------------------------------
-
-pangenome_size <- unlist(snakemake@input[['acc_to_genus']]) %>%
-  #Sys.glob("outputs/accessions_to_genus/*.csv") %>%
-  map_dfr(read_csv, col_types = "ccccccccccccccc") %>%
-  group_by(genus) %>%
-  tally() %>%
-  select(genus, pangenome_size = n) %>%
-  ungroup()
-
-# report number of genes in pangenome cluster
-pangenome_cluster_sizes <- unlist(snakemake@input[['pangenome_cluster']]) %>%
-  # Sys.glob("outputs/genus_pangenome_clustered/*_cds_cluster.tsv") %>%
-  set_names() %>%
-  map_dfr(read_tsv, col_types = "cc", col_names = c("rep", "member"), .id = "genus") %>%
-  mutate(genus = gsub("_cds_cluster.tsv", "", basename(genus))) %>%
-  mutate(rep = paste0(rep, "_1")) %>%
-  filter(rep %in% c(compositional$hgt_candidate, blast$hgt_candidate)) %>%
-  group_by(genus, rep) %>%
-  tally() %>%
-  select(genus, hgt_candidate = rep, pangenome_num_genes_in_cluster = n)
-
-
-# join with gff information -----------------------------------------------
-
-gff <- unlist(snakemake@input[['gff']]) %>%
-# gff <- Sys.glob('outputs/genus_pangenome_raw/*gff_info.tsv') %>%
-  map_dfr(read_tsv)
-
-hgt_candidates <- data.frame(hgt_candidate = c(blast$hgt_candidate, compositional$hgt_candidate))
-
-gff_to_join <- hgt_candidates %>%
-  # split on underscore in rep sequence name and identify the fraction of the split string that matches to the proteins IDs in the gff file 
-  mutate(gff_protein_id = sapply(strsplit(hgt_candidates$hgt_candidate, "_"), 
-                                 function(x) first(intersect(gff$gff_protein_id, x)))) %>%
-  distinct()
-
-gff <- gff %>%
-  right_join(gff_to_join, by = c("gff_protein_id")) %>%
+  relocate(hmmscan_description, .after = hmmscan_domain_name) %>%
   distinct()
 
 # combine and write outputs -----------------------------------------------
+
 all_candidates <- full_join(compositional, blast, by = c("hgt_candidate", "genus"))
 
+# add in the rest of the information
 all_candidates <- left_join(all_candidates, eggnog, by = c("hgt_candidate", "genus")) %>%
   left_join(hmmscan, by = c("hgt_candidate", "genus")) %>%
   left_join(pangenome_cluster_sizes, by = c("hgt_candidate", "genus"))  %>%
@@ -178,12 +199,13 @@ all_candidates <- left_join(all_candidates, eggnog, by = c("hgt_candidate", "gen
   mutate(method = ifelse(hgt_candidate %in% blast$hgt_candidate, "blast", NA),
          method = ifelse(hgt_candidate %in% compositional$hgt_candidate, "raau", method),
          method = ifelse(hgt_candidate %in% blast$hgt_candidate & hgt_candidate %in% compositional$hgt_candidate, "both", method),
-         .after = hgt_candidate)
+         .after = hgt_candidate) %>%
+  distinct()
 
-write_tsv(all_candidates, snakemake@output[['all_results']])
+write_tsv(all_candidates, all_results_tsv)
 
 method_tally <- all_candidates %>%
   group_by(genus, method) %>%
   tally()
 
-write_tsv(method_tally, snakemake@output[['method_tally']])
+write_tsv(method_tally, method_tally_tsv)

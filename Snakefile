@@ -2,41 +2,15 @@ import pandas as pd
 import csv
 import os
 
-class checkpoint_accessions_to_genus:
-    """
-    Define a class to bind accession to genus for pangenome calculation. 
-    This approach is documented at this url:
-    http://ivory.idyll.org/blog/2021-snakemake-checkpoints.html
-    """
-    def __init__(self, pattern):
-        self.pattern = pattern
-
-    def get_genome_accessions(self, genus):
-        genus_csv = f'outputs/accessions_to_genus/{genus}.csv'
-        assert os.path.exists(genus_csv)
-
-        genome_accessions = []
-        with open(genus_csv, 'rt') as fp:
-           r = csv.DictReader(fp)
-           for row in r:
-               accession = row['accession'].split(' ')[0]
-               genome_accessions.append(accession)
-
-        return genome_accessions
-
-    def __call__(self, w):
-        global checkpoints
-        checkpoints.accessions_to_genus.get(**w) # run when rule accessions_to_genus is finished
-        genome_accessions = self.get_genome_accessions(w.genus) # parse accessions in gather output file
-        p = expand(self.pattern, accession=genome_accessions, **w)
-        return p
-
-
-metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
-#metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
+#metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
+metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
 source = ["genome"]
 metadata = metadata.loc[metadata['source'].isin(source)] 
 GENUS = metadata['genus'].unique().tolist()
+
+# remove Trametes String from genus list
+while("Trametes" in GENUS):
+    GENUS.remove("Trametes")
 
 # explanation of wildcards:
 # genus (defined by GENUS): All of the genera that the pipeline will be executed on. This is defined from an input metadata file. 
@@ -44,82 +18,77 @@ GENUS = metadata['genus'].unique().tolist()
 
 rule all:
     input: 
-        "outputs/hgt_candidates_final/results_venoms.tsv"
+        "outputs/hgt_candidates_final/results_fungi.tsv"
         
 ###################################################
-## download references
+## download references & build pangenome
 ###################################################
 
-rule download_reference_genomes:
+checkpoint download_reference_genomes:
     '''
-    Using genome accessions defined in the input metadata file (e.g. GCA_018360135.1), this rule uses the ncbi-genome-download tool to download the GFF annotation file and coding domain sequence (CDS) fasta file. 
-    Most genomes have long names; this rule also truncates the file names after the accession.
+    Using user-provided genera names, this rule uses the ncbi-genome-download tool to download the GFF annotation file and coding domain sequence (CDS) file for all member of that genus in GenBank and RefSeq.
+    It then deletes any genomes that are in RefSeq and GenBank, keeping only the RefSeq version.
+    Next, it combines the raw genome files for that genus into a single FASTA file.
+    Lastly, it reports the genomes that were downloaded into a CSV file.
+    While this rule could be broken out into many smaller rules, keeping it in this format keeps it consistent with the nextflow implementation and simplifies wildcards throughout the workflow.
     '''
     output: 
-        cds="inputs/genbank/{accession}_cds_from_genomic.fna.gz",
-        gff="inputs/genbank/{accession}_genomic.gff.gz",
-        metadata="inputs/genbank/{accession}.tsv"
+        outdir=directory("inputs/genbank/{genus}"),
+        genome_csv="inputs/genbank/{genus}_genomes.csv",
+        cds_combined="inputs/genbank/{genus}_cds.fna"
     conda: "envs/ncbi-genome-download.yml"
-    params: outdir="inputs/genbank/"
-    benchmark: "benchmarks/download_reference_genomes/{accession}.tsv"
+    params: outdir= lambda wildcards: "inputs/genbank/" + wildcards.genus
+    benchmark: "benchmarks/download_reference_genomes/{genus}.tsv"
     shell:'''
-    ncbi-genome-download all -s genbank -o {params.outdir} --flat-output -m {output.metadata} --assembly-accessions {wildcards.accession} -F gff,cds-fasta
-    mv {params.outdir}{wildcards.accession}*_cds_from_genomic.fna.gz {output.cds}
-    mv {params.outdir}{wildcards.accession}*_genomic.gff.gz {output.gff}
+    # NOTE this needs to change to accomodate bacteria or archaea inputs.
+    # I'm nervous about genus collisions in the NCBI taxonomy (esp happens with viruses, i don't know if it happens between bacteria <-> euks). 
+    # I could change this to go from taxid, which will be unique, harder for a user to interpret at a glance.
+    # I'll fix this later, for now it's fine.
+
+    # genbank is separate from refseq, so run twice
+    for section in genbank refseq
+    do
+        ncbi-genome-download vertebrate_mammalian,vertebrate_other,invertebrate,plant,fungi,protozoa --output-folder {params.outdir} --flat-output --genera {wildcards.genus} -F gff,cds-fasta -s \$section --retries 3
+    done
+
+    # when downloading from RefSeq and GenBank sections, there might be duplicate
+    # accessions that vary only by GCA_* or GCF_*, where GCF_* files are from RefSeq.
+    # delete_gca_files.sh deletes GCA_* files only when there is a corresponding GCF_ file.
+    cd ./inputs/genbank/{wildcards.genus}
+    ./bin/delete_gca_files.sh
+    cd ../../../
+
+    # combine & unzip all genus-level gene sequences
+    cat {params.outdir}/*_cds_from_genomic.fna.gz | gunzip > inputs/genbank/{wildcards.genus}_cds.fna
+
+    # record the genomes were downloaded in a csv file
+    echo "genus,genome" > {params.outdir}/{wildcards.genus}_genomes.csv
+    ls {params.outdir}/*_cds_from_genomic.fna.gz | while read -r line; do
+       bn=$(basename ${{line}})
+       echo "{wildcards.genus},\${{bn}}" >> inputs/genbank/{wildcards.genus}_genomes.csv
+    done
     '''
 
-rule decompress_genome:
-    '''
-    Some tools require decompressed files.
-    '''
-    input: "inputs/genbank/{accession}_cds_from_genomic.fna.gz"
-    output: "outputs/genbank/{accession}_cds_from_genomic.fna"
-    benchmark: "benchmarks/decompress_reference_genomes/{accession}.tsv"
-    shell:'''
-    gunzip -c {input} > {output}
-    '''
+def checkpoint_download_reference_genomes(wildcards):
+    # solve for gff file paths
+    checkpoint_output = checkpoints.download_reference_genomes.get(**wildcards).output[0] # grab output directory name 
+    file_names = expand("inputs/genbank/{{genus}}/{accession}_genomic.gff.gz",
+                        accession = glob_wildcards(os.path.join(checkpoint_output, "{accession}_genomic.gff.gz")).accession)
+    return file_names
 
-###################################################
-## generate pangenome
-###################################################
-
-checkpoint accessions_to_genus:
-    input: metadata="inputs/venoms.tsv"
-    #input: metadata="inputs/candidate_fungi_for_bio_test_data_set.tsv"
-    '''
-    The input metadata file defines the taxonomic lineage of each of the input genomes.
-    This rule creates a CSV file with all of the genomes that belong to a given genus.
-    It generates the wildcard genus, which is defined from the input metadata file at the top of the snakefile.
-    This checkpoint is not how checkpoints are usually used in snakemake.
-    Instead, it interacts with the class checkpoint_accessions_to_genus.
-    That class is run after this rule is executed, where it maps all of the accessions that belong to a given genus.
-    '''
-    output: genus="outputs/accessions_to_genus/{genus}.csv",
-    conda: "envs/tidyverse.yml"
-    benchmark: "benchmarks/accessions_to_genus/{genus}.tsv"
-    script: "scripts/accessions_to_genus.R"
-
-rule combine_cds_per_genus:
-    '''
-    Using the class checkpoint_accessions_to_genus, this rule combines all CDS sequences from all accessions that belong to a given genus into one file so they can be clustered into a "pangenome."
-    '''
-    input: checkpoint_accessions_to_genus('outputs/genbank/{accession}_cds_from_genomic.fna')
-    output: "outputs/genus_pangenome_raw/{genus}_cds.fna"
-    benchmark: "benchmarks/combine_cds_per_genus/{genus}.tsv"
-    shell:'''
-    cat {input} > {output}
-    '''
 
 rule combine_and_parse_gff_per_genus:
     '''
     Using the class checkpoint_accessions_to_genus, this rule combines all GFF annotation files from all accessions that belong to a given genus into one file.
     After pangenome clustering, this file will be used to retrieve information (genomic coords, etc) for rep sequences.
     '''
-    input: gff = checkpoint_accessions_to_genus('inputs/genbank/{accession}_genomic.gff.gz')
+    input: gff = checkpoint_download_reference_genomes,
     output: gff = "outputs/genus_pangenome_raw/{genus}_gff_info.tsv"
     benchmark: "benchmarks/combine_gff_per_genus/{genus}.tsv"
     conda: "envs/tidyverse.yml"
-    script: "scripts/combine_and_parse_gff_per_genus.R"
+    shell:'''
+    bin/combine_and_parse_gff_per_genus.R {output} {input}
+    '''
 
 rule build_genus_pangenome:
     '''
@@ -130,7 +99,7 @@ rule build_genus_pangenome:
     0.98, 0.99 https://www.sciencedirect.com/science/article/pii/S0960982220314263
     0.9 https://www.pnas.org/doi/abs/10.1073/pnas.2009974118
     '''
-    input: "outputs/genus_pangenome_raw/{genus}_cds.fna"
+    input: "inputs/genbank/{genus}_cds.fna"
     output: 
         "outputs/genus_pangenome_clustered/{genus}_cds_rep_seq.fasta",
         "outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv"
@@ -177,10 +146,12 @@ rule compositional_scans_to_hgt_candidates:
     input: raau='outputs/compositional_scans_pepstats/{genus}_pepstats.txt',
     output: 
         tsv="outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv",
-        gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_gene_lst.txt"
+        gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_pepstats_gene_lst.txt"
     benchmark: "benchmarks/compositional_scans_to_hgt_candidates/{genus}.tsv"
     conda: "envs/tidyverse.yml"
-    script: "scripts/compositional_scans_to_hgt_candidates.R"
+    shell:'''
+    bin/compositional_scans_to_hgt_candidates.R {input.raau} {output.tsv} {output.gene_lst}
+    '''
 
 ###################################################
 ## BLASTP (diamond) against clustered nr
@@ -215,10 +186,11 @@ rule blast_add_taxonomy_info:
         tsv="outputs/blast_diamond/{genus}_vs_clustered_nr.tsv",
         sqldb="inputs/nr_cluster_taxid_formatted_final.sqlite" # downloaded from S3...TBD on how to make available, it's 63 GB
     output: tsv="outputs/blast_diamond/{genus}_vs_clustered_nr_lineages.tsv"
-    params: sqldb_tbl="nr_cluster_taxid_table"
     conda: "envs/r-sql.yml"
     benchmark: "benchmarks/blast_add_taxonomy_info/{genus}.tsv"
-    script: "scripts/blast_add_taxonomy_info.R"
+    shell:'''
+    bin/blastp_add_taxonomy_info.R {input.sqldb} {input.tsv} {output.tsv}
+    '''
 
 rule blast_to_hgt_candidates:
     '''
@@ -228,11 +200,13 @@ rule blast_to_hgt_candidates:
     '''
     input: tsv="outputs/blast_diamond/{genus}_vs_clustered_nr_lineages.tsv"
     output: 
-        gene_lst="outputs/blast_hgt_candidates/{genus}_gene_lst.txt",
-        tsv="outputs/blast_hgt_candidates/{genus}_blast_scores.tsv"
+        gene_lst="outputs/blast_hgt_candidates/{genus}_blastp_gene_lst.txt",
+        tsv="outputs/blast_hgt_candidates/{genus}_blastp_scores.tsv"
     conda: "envs/tidyverse.yml"
     benchmark: "benchmarks/blast_to_hgt_candidates/{genus}.tsv"
-    script: "scripts/blast_to_hgt_candidates.R"
+    shell:'''
+    bin/blastp_to_hgt_candidates.R {input.tsv} {output.tsv} {output.gene_lst}
+    '''
 
 ###################################################
 ## candidate characterization
@@ -249,8 +223,8 @@ rule combine_hgt_candidates:
     '''
     input: 
        "outputs/blast_hgt_candidates/{genus}_gene_lst.txt",
-       "outputs/compositional_scans_hgt_candidates/{genus}_gene_lst.txt"
-    output: "outputs/hgt_candidates/{genus}_gene_lst.txt"
+       "outputs/compositional_scans_hgt_candidates/{genus}_pepstats_gene_lst.txt"
+    output: "outputs/hgt_candidates/{genus}_blastp_gene_lst.txt"
     conda: "envs/csvtk.yml"
     shell:'''
     cat {input} | csvtk freq -H -f 1 | csvtk cut -f 1 -o {output}
@@ -321,6 +295,7 @@ rule hmmscan_hgt_candidates:
     threads: 8
     benchmark: "benchmarks/hmmscan_hgt_candidates/{genus}.tsv"
     shell:'''
+    hmmpress {input.hmmdb}
     hmmscan --cpu {threads} --tblout {output.tblout} -o {output.out} {input.hmmdb} {input.fa}
     '''
 
@@ -335,14 +310,18 @@ rule combine_results:
     '''
     input: 
         compositional = expand("outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv", genus = GENUS),
-        blast = expand("outputs/blast_hgt_candidates/{genus}_blast_scores.tsv", genus = GENUS),
+        blast = expand("outputs/blast_hgt_candidates/{genus}_blastp_scores.tsv", genus = GENUS),
+        genome_csv=expand("inputs/genbank/{genus}_genomes.csv", genus = GENUS),
+        pangenome_cluster = expand("outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv", genus = GENUS),
+        gff = expand("outputs/genus_pangenome_raw/{genus}_gff_info.tsv", genus = GENUS),
         eggnog = expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS),
         hmmscan = expand("outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout", genus = GENUS),
-        acc_to_genus = expand("outputs/accessions_to_genus/{genus}.csv", genus = GENUS),
-        pangenome_cluster = expand("outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv", genus = GENUS),
-        gff = expand("outputs/genus_pangenome_raw/{genus}_gff_info.tsv", genus = GENUS)
     output: 
-        all_results = "outputs/hgt_candidates_final/results_venoms.tsv",
-        method_tally = "outputs/hgt_candidates_final/method_tally_venoms.tsv"
+        #all_results = "outputs/hgt_candidates_final/results_venoms.tsv",
+        #method_tally = "outputs/hgt_candidates_final/method_tally_venoms.tsv"
+        all_results = "outputs/hgt_candidates_final/results_fungi.tsv",
+        method_tally = "outputs/hgt_candidates_final/method_tally_fungi.tsv"
     conda: "envs/tidyverse.yml"
-    script: "scripts/combine_results.R"
+    shell:'''
+    bin/combine_results.R {input.compositional} {input.blast} {input.genome_csv} {input.pangenome_cluster} {input.gff} {input.eggnog} {input.hmmscan}
+    '''
