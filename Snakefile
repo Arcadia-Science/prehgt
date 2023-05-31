@@ -245,39 +245,42 @@ rule extract_hgt_candidates:
     seqtk subseq {input.fa} {input.gene_lst} > {output}
     '''
 
-rule download_eggnog_db:
+rule download_kofamscan_ko_list:
     """
-    This rule downloads the eggnog annotation database.
-    The script download_eggnog_data.py is exported by the eggnog mapper tool.
+    This rule downloads the kofamscan KEGG list file.
     """
-    output: "inputs/eggnog_db/eggnog.db"
-    conda: "envs/eggnog.yml"
+    output: "inputs/kofamscandb/ko_list"
+    params: outdir = "inputs/kofamscandb/"
     shell:'''
-    download_eggnog_data.py -H -d 2 -y --data_dir inputs/eggnog_db
+    wget -O {output}.gz ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip {output}.gz -C {params.outdir}
     '''
 
-rule eggnog_hgt_candidates:
+rule download_kofamscan_profiles:
+    """
+    This rule downloads the kofamscan KEGG hmm profiles.
+    """
+    output: "inputs/kofamscandb/profiles/prokaryote.hal"
+    params: outdir = "inputs/kofamscandb/"
+    shell:'''
+    wget -O {params.outdir}/profiles.tar.gz ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz && tar xf {params.outdir}/profiles.tar.gz -C {params.outdir}
     '''
-    This rule uses the EggNOG database to functionally annotate the HGT candidate genes. 
-    It runs the EggNOG-Mapper tool on the translated candidate gene sequences, generating a file with the annotations (NOG, KEGG, PFAM, CAZys, EC numbers) for each gene. 
-    The script emapper.py is exported by the eggnog mapper tool.
-    '''
+
+rule kofamscan_hgt_candidates:
+    """
+    This rule uses the kofamscan to perform KEGG ortholog annotation on the HGT candidate genes. 
+    """
     input:
-        db="inputs/eggnog_db/eggnog.db",
-        fa="outputs/hgt_candidates/{genus}_aa.fasta"
-    output: "outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations",
-    conda: "envs/eggnog.yml"
-    params:
-        outdir="outputs/hgt_candidates_annotation/eggnog/",
-        dbdir = "inputs/eggnog_db" 
+        fa="outputs/hgt_candidates/{genus}_aa.fasta",
+        kolist="inputs/kofamscandb/ko_list",
+        profiles="inputs/kofamscandb/profiles/prokaryote.hal"
+    output: "outputs/hgt_candidates_annotation/kofamscan/{genus}.tsv"
+    conda: "envs/kofamscan.yml"
+    params: profilesdir = "inputs/kofamscandb/profiles"
     threads: 8
-    benchmark: "benchmarks/eggnog_hgt_candidates/{genus}.tsv"
+    benchmark: "benchmarks/kofamscan_hgt_candidates/{genus}.tsv"
     shell:'''
     mkdir -p tmp
-    emapper.py --cpu {threads} -i {input.fa} --output {wildcards.genus} \
-       --output_dir {params.outdir} -m diamond --tax_scope none \
-       --seed_ortholog_score 60 --override --temp_dir tmp/ \
-       --data_dir {params.dbdir}
+    exec_annotation --ko-list {input.kolist} --profile {params.profilesdir} --cpus {threads} --format mapper -o {output} {input.fa}
     '''
 
 rule hmmscan_hgt_candidates:
@@ -314,7 +317,7 @@ rule combine_results:
         genome_csv=expand("inputs/genbank/{genus}_genomes.csv", genus = GENUS),
         pangenome_cluster = expand("outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv", genus = GENUS),
         gff = expand("outputs/genus_pangenome_raw/{genus}_gff_info.tsv", genus = GENUS),
-        eggnog = expand("outputs/hgt_candidates_annotation/eggnog/{genus}.emapper.annotations", genus = GENUS),
+        kofamscan = expand("outputs/hgt_candidates_annotation/kofamscan/{genus}.tsv", genus = GENUS),
         hmmscan = expand("outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout", genus = GENUS),
     output: 
         #all_results = "outputs/hgt_candidates_final/results_venoms.tsv",
@@ -323,5 +326,5 @@ rule combine_results:
         method_tally = "outputs/hgt_candidates_final/method_tally_fungi.tsv"
     conda: "envs/tidyverse.yml"
     shell:'''
-    bin/combine_results.R {input.compositional} {input.blast} {input.genome_csv} {input.pangenome_cluster} {input.gff} {input.eggnog} {input.hmmscan}
+    bin/combine_results.R {input.compositional} {input.blast} {input.genome_csv} {input.pangenome_cluster} {input.gff} {input.kofamscan} {input.hmmscan}
     '''
