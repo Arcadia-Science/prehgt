@@ -22,6 +22,6 @@ process kofamscan_hgt_candidates {
     # profiles.tar.gz is 1.3Gb.
     wget ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz && tar xf profiles.tar.gz
     wget ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip ko_list.gz
-    exec_annotation --ko-list ko_list --profile profiles --cpus $task.cpus --format mapper -o ${prefix}_kofamscan.tsv ${input_aa_fasta}
+    exec_annotation --ko-list ko_list --profile profiles --cpu $task.cpus --format mapper -o ${prefix}_kofamscan.tsv ${input_aa_fasta}
     """
 }

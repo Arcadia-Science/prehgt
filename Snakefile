@@ -280,7 +280,7 @@ rule kofamscan_hgt_candidates:
     benchmark: "benchmarks/kofamscan_hgt_candidates/{genus}.tsv"
     shell:'''
     mkdir -p tmp
-    exec_annotation --ko-list {input.kolist} --profile {params.profilesdir} --cpus {threads} --format mapper -o {output} {input.fa}
+    exec_annotation --ko-list {input.kolist} --profile {params.profilesdir} --cpu {threads} --format mapper -o {output} {input.fa}
     '''
 
 rule hmmscan_hgt_candidates:
