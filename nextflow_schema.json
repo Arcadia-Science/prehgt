@@ -41,6 +41,20 @@
                     "description": "Path to a SQLITE database containing taxonomy information for blast_db sequences.",
                     "help_text": "This file should contain taxonomic lineages (names and taxids) for the FASTA sequences in the blast_db."
                 },
+                "ko_list": {
+                    "type": "string",
+                    "format": "file-path",
+                    "mimetype": "gzip archive",
+                    "description": "Path to gzipped text file of KEGG orthologs for kofamscan.",
+                    "help_text": "File can be downloaded from ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz."
+                },
+                "ko_profiles": {
+                    "type": "string",
+                    "format": "file-path",
+                    "mimetype": "tar archive",
+                    "description": "Path to tar archive file containing KEGG ortholog HMM profiles for kofamscan.",
+                    "help_text": "File can be downloaded from ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz."
+                },
                 "hmm_db": {
                     "type": "string",
                     "description": "Specify HMM database path.",
