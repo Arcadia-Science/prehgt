@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema",
-    "$id": "https://raw.githubusercontent.com/taylorreiter/2023-rehgt-nextflow/main/nextflow_schema.json",
-    "title": "taylorreiter/2023-rehgt-nextflow pipeline parameters",
+    "$id": "https://raw.githubusercontent.com/Arcadia-Science/2023-rehgt/main/nextflow_schema.json",
+    "title": "Arcadia-Science/2023-rehgt pipeline parameters",
     "description": "try translating re-hgt to nexflow pipeline using template",
     "type": "object",
     "definitions": {
