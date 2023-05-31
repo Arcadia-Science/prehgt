@@ -1,9 +1,9 @@
 #!/usr/bin/env nextflow
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Arcadia-Science/2023-rehgt-nextflow
+    Arcadia-Science/2023-rehgt
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Github : https://github.com/Arcadia-Science/2023-rehgt-nextflow
+    Github : https://github.com/Arcadia-Science/2023-rehgt
 ----------------------------------------------------------------------------------------
 */
 
@@ -26,7 +26,7 @@ WorkflowMain.initialize(workflow, params, log)
 include { REHGT } from './workflows/rehgt'
 
 //
-// WORKFLOW: Run main Arcadia-Science/2023-rehgt-nextflow analysis pipeline
+// WORKFLOW: Run main Arcadia-Science/2023-rehgt analysis pipeline
 //
 workflow ARCADIASCIENCE_REHGT {
     REHGT ()
