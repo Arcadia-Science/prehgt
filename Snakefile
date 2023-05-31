@@ -273,7 +273,7 @@ rule kofamscan_hgt_candidates:
         fa="outputs/hgt_candidates/{genus}_aa.fasta",
         kolist="inputs/kofamscandb/ko_list",
         profiles="inputs/kofamscandb/profiles/prokaryote.hal"
-    output: "outputs/hgt_candidates_annotation/kofamscan/{genus}.tsv"
+    output: "outputs/hgt_candidates_annotation/kofamscan/{genus}_kofamscan.tsv"
     conda: "envs/kofamscan.yml"
     params: profilesdir = "inputs/kofamscandb/profiles"
     threads: 8
@@ -317,7 +317,7 @@ rule combine_results:
         genome_csv=expand("inputs/genbank/{genus}_genomes.csv", genus = GENUS),
         pangenome_cluster = expand("outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv", genus = GENUS),
         gff = expand("outputs/genus_pangenome_raw/{genus}_gff_info.tsv", genus = GENUS),
-        kofamscan = expand("outputs/hgt_candidates_annotation/kofamscan/{genus}.tsv", genus = GENUS),
+        kofamscan = expand("outputs/hgt_candidates_annotation/kofamscan/{genus}_kofamscan.tsv", genus = GENUS),
         hmmscan = expand("outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout", genus = GENUS),
     output: 
         #all_results = "outputs/hgt_candidates_final/results_venoms.tsv",
