@@ -1,25 +1,27 @@
-process eggnog_hgt_candidates {
+process kofamscan_hgt_candidates {
     tag "$genus"
     label 'process_blast'
 
-    conda "bioconda::eggnog-mapper=2.1.10"
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/eggnog-mapper:2.1.10--pyhdfd78af_0':
-        'quay.io/biocontainers/eggnog-mapper:2.1.10--pyhdfd78af_0' }"
+    conda "bioconda::kofamscan=1.3.0 conda-forge::wget=1.20.3"
+    //container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    //    'https://depot.galaxyproject.org/singularity/kofamscan:1.3.0--hdfd78af_2':
+    //    'quay.io/biocontainers/kofamscan:1.3.0--hdfd78af_2' }"
 
     input:
-    path(eggnog_db)
-    path(eggnog_dmnd)
     tuple val(genus), path(input_aa_fasta)
     
     output:
-    tuple val(genus), path("*.emapper.annotations"), emit: annotations
+    tuple val(genus), path("*_kofamscan.tsv"), emit: tsv
 
     script:
     def prefix = task.ext.prefix ?: "${genus}"
     """
-    mkdir -p tmpdir
-    # the data_dir must contain the EGGNOG db files. Since nextflow stages the input database files in the run dir, the data_dir becomes the working dir. 
-    emapper.py --cpu $task.cpus -i ${input_aa_fasta} --output ${prefix} -m diamond --tax_scope none --seed_ortholog_score 60 --override --temp_dir tmpdir --data_dir .
+    mkdir -p tmp
+    # I decided to download the databases in place instead of supplying them as inputs.
+    # ko_list.gz is 810Kb
+    # profiles.tar.gz is 1.3Gb.
+    wget ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz && tar xf profiles.tar.gz
+    wget ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip ko_list.gz
+    exec_annotation --ko-list ko_list --profile profiles --cpus $task.cpus --format mapper -o ${prefix}_kofamscan.tsv ${input_aa_fasta}
     """
 }

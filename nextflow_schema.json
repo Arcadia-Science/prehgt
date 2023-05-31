@@ -10,7 +10,7 @@
             "type": "object",
             "fa_icon": "fas fa-terminal",
             "description": "Define where the pipeline should find input data and save output data.",
-            "required": ["input", "outdir", "blast_db", "blast_db_tax"],
+            "required": ["input", "outdir", "blast_db", "blast_db_tax", "hmm_db"],
             "properties": {
                 "input": {
                     "type": "string",
@@ -40,18 +40,6 @@
                     "mimetype": "sqlite",
                     "description": "Path to a SQLITE database containing taxonomy information for blast_db sequences.",
                     "help_text": "This file should contain taxonomic lineages (names and taxids) for the FASTA sequences in the blast_db."
-                },
-                "eggnog_db": {
-                    "type": "string",
-                    "format": "file-path",
-                    "description": "Specify EGGNOG database (.db) file path.",
-                    "help_text": "Path to a EGGNOG database .db file. This file can be retrieved with the rest of the EGGNOG database using the command download_eggnog_data.py in the eggnog-mapper software package."
-                },
-                "eggnog_dmnd": {
-                    "type": "string",
-                    "format": "file-path",
-                    "description": "Specify EGGNOG database diamond (.dmnd) file path.",
-                    "help_text": "Path to a EGGNOG database diamond .dmnd file. This file can be retrieved with the rest of the EGGNOG database using the command download_eggnog_data.py in the eggnog-mapper software package."
                 },
                 "hmm_db": {
                     "type": "string",
