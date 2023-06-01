@@ -50,7 +50,6 @@ parse_pepstats_to_amino_acid_frequencies <- function(content) {
 
 # read in data and parse --------------------------------------------------
 
-pepstats_txt <- "~/github/2023-rehgt/outputs/compositional_scans_pepstats/Ophiocordyceps_pepstats.txt"
 file_content <- readLines(pepstats_txt)
 raau <- parse_pepstats_to_amino_acid_frequencies(file_content)
 print("RAAU parsing done.")
@@ -75,8 +74,12 @@ clusters <- clusters %>%
   select(cluster=".") %>% # rename the column to cluster
   rownames_to_column("cds") # move gene name row name to column
 
-# calculate cluster threshold
-min_cluster_size <- round(0.001 * nrow(raau)) # clusters must contain 0.1% of total proteins or fewer
+# calculate cluster threshold. Relax the threshold if the pseudopangenome is small.
+if(nrow(raau) < 1000){
+  min_cluster_size <- round(0.01 * nrow(raau)) # clusters must contain 1% of total proteins or fewer
+} else {
+  min_cluster_size <- round(0.001 * nrow(raau)) # clusters must contain 0.1% of total proteins or fewer
+}
 
 small_clusters <- clusters %>%
   group_by(cluster) %>%
@@ -92,58 +95,3 @@ clusters <- clusters %>%
 write_tsv(clusters, pepstats_hgt_out)
 # write out a gene list to use extract CDS sequences of HGT candidates from FASTA
 write_tsv(clusters[1], gene_lst_out, col_names = FALSE)
-
-
-# try new outlier detection -----------------------------------------------
-
-tmp <- raau %>% 
-  select(-ID) %>% 
-  select_if(negate(function(col) is.numeric(col) && sum(col) == 0)) %>%
-  as.matrix()
-
-distances <- mahalanobis(tmp, center = colMeans(tmp), cov = cov(tmp))
-threshold <- qchisq(.99999999, df = ncol(tmp))
-outlier_indices <- which(distances > threshold)
-length(distances)
-length(outlier_indices)
-
-# PCA ---------------------------------------------------------------------
-
-# Perform PCA
-pca_res <- prcomp(tmp, center = TRUE, scale. = TRUE)
-
-# Get the scores of the first two principal components
-scores <- pca_res$x[,1:2]
-
-# Plot the scores
-# plot(scores, xlab = "PC1", ylab = "PC2", main = "PCA plot of RAAU")
-
-# Identify potential HGT genes based on standard deviation threshold
-outlier_threshold <- 2 # You might need to adjust this threshold
-outliers <- row.names(tmp)[(scores[,1] > outlier_threshold*sd(scores[,1])) | 
-                             (scores[,2] > outlier_threshold*sd(scores[,2]))]
-
-length(outliers)
-
-# compare three methods ---------------------------------------------------
-# compare against blast as well
-blast <- read_tsv("~/github/2023-rehgt/outputs/hgt_candidates_final/results_fungi.tsv") %>%
-  filter(method %in% c("blast", "both")) %>%
-  filter(genus == "Ophiocordyceps")
-
-library(sourmashconsumr)
-upset_df <- sourmashconsumr::from_list_to_upset_df(list(pca = outliers,
-                                                        mahal = names(outlier_indices),
-                                                        clusters = clusters$hgt_candidate,
-                                                        blast = blast$hgt_candidate))
-UpSetR::upset(upset_df)
-
-
-shared <- outliers[outliers %in% names(outlier_indices)]
-shared <- shared[shared %in% clusters$hgt_candidate]
-length(shared)
-# get protein accessions
-tmp <- data.frame(shared = shared) %>%
-  separate(shared, into = c("chr", "cds", "accession", "end", "start"), sep = "_")
-cat(tmp$accession, sep = "\n")
-
