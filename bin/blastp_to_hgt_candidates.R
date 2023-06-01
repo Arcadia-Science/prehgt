@@ -228,7 +228,7 @@ num_matches_per_group <- blast %>%
   select(qseqid, kingdom, num_matches_per_group = n)
 
 combined <- left_join(best_match_per_group_values, best_match_per_group_identities, by = c("qseqid", "kingdom")) %>%
-  left_join(num_matches_per_group, by = c("qseqid", "kingdom")) 
+  left_join(num_matches_per_group, by = c("qseqid", "kingdom"))
 
 # calculate HGT indices and predict candidate CDSs ------------------------
 
