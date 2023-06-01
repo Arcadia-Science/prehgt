@@ -95,10 +95,63 @@ lca <- function(lineage_df){
   return(lineage_df)
 }
 
+gini <- function(x) {
+  # calculate gini coefficient
+  x_sorted <- sort(x)
+  n <- length(x_sorted)
+  return (1 - 2 * (sum((1:n) * x_sorted) / sum(x_sorted) - (n + 1) / 2) / n)
+}
+
+# add more (better?) indices that report on how distributed a protein is across groups
+group_specificy_indices <- function(df, kingdoms) {
+  # * df: a data frame with qseqid and kingdom columns
+  # * kingdoms: a vector of kingdom values, e.g. c("Fungi", "Viridiplantae", "Bacteria", "Other Eukaryota", "Metazoa", "Archaea", "Virus")
+  # * entropy: a measure of the uncertainty or randomness of a set of probabilities. 
+  #   Gives a higher number for a qseqid that is evenly distributed across all kingdoms.
+  #   Gives a lower number for a qseqid that is mostly associated with a single kingdom.
+  # * entropy_normalized: the maximum value occurs when all kingdoms are equally represented. 
+  #   The entropy is -log2(1/K), where K is the number of kingdoms. 
+  #   Given 7 kingdoms, the max entropy would be log2(7).
+  #   Entropy is normalized to 0-1 range by dividing by the maximum potential value.
+  #   A normalized entropy close to 0 indicates that the qseqid is mostly associated with one kingdom.
+  #   A normalized entropy close to 1 indicates that the qseqid is uniformly distributed across all kingdoms.
+  # * gini: Gini Coefficient, a measure of inequality among values of a frequency distribution. 
+  #   A Gini coefficient close to 0 indicates that the qseqid is uniformly distributed across all kingdoms.
+  #   A Gini coefficient close to 1 indicates that the qseqid is specific to one kingdom.
+  
+  # calculate the counts for each qseqid and kingdom
+  df <- df %>%
+    count(qseqid, kingdom) %>%
+    ungroup()
+  
+  # include missing kingdoms, even if the count for that group is 0
+  df <- expand_grid(qseqid = unique(df$qseqid), kingdom = kingdoms) %>%
+    left_join(df, by = c("qseqid", "kingdom")) %>%
+    replace_na(list(n = 0))
+  
+  # calculate specificity (fraction of matches to a specific group)
+  df <- df %>%
+    group_by(qseqid) %>%
+    mutate(specificity = n / sum(n)) %>%
+    ungroup()
+  
+  # use specificy to calculate entropy and counts to calculate gini coefficient
+  all <- df %>%
+    group_by(qseqid) %>%
+    mutate(entropy = -sum(specificity * log2(specificity), na.rm = TRUE),
+           entropy_normalized = entropy / log2(n_distinct(kingdom))) %>%
+    mutate(gini = gini(n)) %>%
+    ungroup() %>%
+    select(qseqid, entropy, entropy_normalized, gini) %>%
+    distinct()
+  
+  return(all)
+}
+
 # read BLAST results ---------------------------------------------------
 
 # read in BLAST results
-# blast <- read_tsv("outputs/blast_diamond/Microplitis_vs_clustered_nr_lineages.tsv", col_types = "ccccdddddddddddddddddccccccccc")
+#blast <- read_tsv("~/github/2023-rehgt/outputs/blast_diamond/Agrocybe_vs_clustered_nr_lineages.tsv", col_types = "ccccdddddddddddddddddccccccccc")
 blast <- read_tsv(blast_tsv, col_types = "ccccdddddddddddddddddccccccccc")
 # edit kingdom to seven categories
 blast <- blast %>%
@@ -147,6 +200,10 @@ blast <- blast %>%
   filter(keep == "keep") %>%
   select(-keep)
 
+# calculate how specific matches are to a given kingdom using gini and entropy
+group_specificity <- blast %>%
+  group_specificy_indices(kingdoms = groups)
+  
 # calculate the max_bitscore and the min_evalue for each donor group and the acceptor group per query
 best_match_per_group_values <- blast %>%
   group_by(qseqid, kingdom) %>%
@@ -171,7 +228,7 @@ num_matches_per_group <- blast %>%
   select(qseqid, kingdom, num_matches_per_group = n)
 
 combined <- left_join(best_match_per_group_values, best_match_per_group_identities, by = c("qseqid", "kingdom")) %>%
-  left_join(num_matches_per_group, by = c("qseqid", "kingdom"))
+  left_join(num_matches_per_group, by = c("qseqid", "kingdom")) 
 
 # calculate HGT indices and predict candidate CDSs ------------------------
 
@@ -229,7 +286,8 @@ candidates <- candidates %>%
   left_join(donor_dist_index, by = c("qseqid", "donor_group", "donor_max_bitscore", 
                                      "donor_min_evalue", "donor_num_matches_per_group",
                                      "donor_best_match", "donor_best_match_lineage",
-                                     "donor_best_match_pident"))
+                                     "donor_best_match_pident")) %>%
+  left_join(group_specificity, by = "qseqid")
 
 # filter; alien index > 0 "indicates a better hit to candidate donor than recipient taxa and a possible HGT" (10.3390/genes8100248).
 candidates <- candidates %>%
@@ -239,6 +297,30 @@ candidates <- candidates %>%
          HGT_score = ifelse(alien_index < 15, "Possible HGT", HGT_score),
          HGT_score = ifelse(donor_best_match_pident > 80, "Likely contamination", HGT_score))
 
-
 write_tsv(candidates, blast_hgt_out)
 write_tsv(candidates[ , 1], gene_lst_out <- args[3], col_names = FALSE)
+
+# mess around -------------------------------------------------------------
+
+df <- data.frame(qseqid = rep("SJKF01000002.1_cds_KAF4604646.1_3354_1", 100), 
+                 kingdom = c(rep("Fungi", 60), rep("Viridiplantae", 5), rep("Virus", 7), 
+                             rep("Other Eukaryota", 9), rep("Metazoa", 12), 
+                             rep("Bacteria", 4), rep("Archaea", 0), rep("Virus", 3)))
+group_specificy_indices(df = df, kingdoms = groups)
+
+
+df2 <- data.frame(qseqid = rep("y", 100), 
+                  kingdom = c(rep("Fungi", 15), rep("Viridiplantae", 14), rep("Virus", 14), 
+                              rep("Other Eukaryota", 15), rep("Metazoa", 14), 
+                              rep("Bacteria", 14), rep("Archaea", 14)))
+group_specificy_indices(df = df2, kingdoms = groups)
+
+df3 <- data.frame(qseqid = rep("x", 100), 
+                  kingdom = c(rep("Fungi", 60), rep("Viridiplantae", 0), rep("Virus", 40)))
+group_specificy_indices(df = df3, kingdoms = groups)
+
+df4 <- data.frame(qseqid = rep("z", 100), 
+                  kingdom = c(rep("Fungi", 94), rep("Viridiplantae", 1), rep("Virus", 1),
+                              rep("Other Eukaryota", 1), rep("Metazoa", 1), 
+                              rep("Bacteria", 1), rep("Archaea", 1)))
+group_specificy_indices(df = df4, kingdoms = groups)
