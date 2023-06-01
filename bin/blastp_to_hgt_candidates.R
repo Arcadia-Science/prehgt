@@ -298,4 +298,4 @@ candidates <- candidates %>%
          HGT_score = ifelse(donor_best_match_pident > 80, "Likely contamination", HGT_score))
 
 write_tsv(candidates, blast_hgt_out)
-write_tsv(candidates[ , 1], gene_lst_out <- args[3], col_names = FALSE)
+write_tsv(candidates[ , 1], gene_lst_out, col_names = FALSE)
