@@ -299,28 +299,3 @@ candidates <- candidates %>%
 
 write_tsv(candidates, blast_hgt_out)
 write_tsv(candidates[ , 1], gene_lst_out <- args[3], col_names = FALSE)
-
-# mess around -------------------------------------------------------------
-
-df <- data.frame(qseqid = rep("SJKF01000002.1_cds_KAF4604646.1_3354_1", 100), 
-                 kingdom = c(rep("Fungi", 60), rep("Viridiplantae", 5), rep("Virus", 7), 
-                             rep("Other Eukaryota", 9), rep("Metazoa", 12), 
-                             rep("Bacteria", 4), rep("Archaea", 0), rep("Virus", 3)))
-group_specificy_indices(df = df, kingdoms = groups)
-
-
-df2 <- data.frame(qseqid = rep("y", 100), 
-                  kingdom = c(rep("Fungi", 15), rep("Viridiplantae", 14), rep("Virus", 14), 
-                              rep("Other Eukaryota", 15), rep("Metazoa", 14), 
-                              rep("Bacteria", 14), rep("Archaea", 14)))
-group_specificy_indices(df = df2, kingdoms = groups)
-
-df3 <- data.frame(qseqid = rep("x", 100), 
-                  kingdom = c(rep("Fungi", 60), rep("Viridiplantae", 0), rep("Virus", 40)))
-group_specificy_indices(df = df3, kingdoms = groups)
-
-df4 <- data.frame(qseqid = rep("z", 100), 
-                  kingdom = c(rep("Fungi", 94), rep("Viridiplantae", 1), rep("Virus", 1),
-                              rep("Other Eukaryota", 1), rep("Metazoa", 1), 
-                              rep("Bacteria", 1), rep("Archaea", 1)))
-group_specificy_indices(df = df4, kingdoms = groups)
