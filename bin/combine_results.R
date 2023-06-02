@@ -102,7 +102,7 @@ for(file in blast_tsv){
 
 blast <- blast_files_with_results %>%
   set_names() %>%
-  map_dfr(read_tsv, col_types = "ccddddcdddccdddcddddc", .id = "genus") %>%
+  map_dfr(read_tsv, col_types = "ccddddcdddccdddcdddddddc", .id = "genus") %>%
   rename_with( ~ paste0("blast_", .x)) %>%
   rename(hgt_candidate = blast_qseqid, genus = blast_genus) %>%
   mutate(genus = gsub("_blastp_scores.tsv", "", basename(genus))) %>%
