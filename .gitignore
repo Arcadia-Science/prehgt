@@ -16,3 +16,15 @@ inputs/nr_cluster_taxid_formatted_final.tsv
 inputs/nr_rep_seq.fasta.gz
 inputs/eggnog_db/
 inputs/hmms/
+inputs/candidate_fungi_for_bio_test_data_set_small.tsv
+inputs/microplitis.tsv
+inputs/spomb_pos_control.tsv
+inputs/spomb_pos_control_annot.csv
+inputs/venoms.tsv
+.nextflow.log*
+.nextflow/
+fig/dag.txt
+fig/dag_edited.pdf
+fig/dag_edited.png
+out_test/
+work/
