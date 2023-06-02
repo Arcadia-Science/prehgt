@@ -41,6 +41,11 @@ hgt_index <- function(bitscore_donor, bitscore_acceptor) {
   return(diff)
 }
 
+ahs <- function(sum_bitscore_donor, sum_bitscore_acceptor){
+  diff <- sum_bitscore_donor - sum_bitscore_acceptor
+  return(diff)
+}
+
 # define a function to calculate how distributed a protein is
 donor_distribution_index <- function(n, num_matches_per_group){
   # * donor distribution_index: a measure of the distribution of the gene across the 
@@ -148,6 +153,19 @@ group_specificy_indices <- function(df, kingdoms) {
   return(all)
 }
 
+normalized_bitscore_01 <- function(bitscore, max_bitscore){
+  # calculate a normalized bitscore on a 0-1 scale
+  # bitscore: the bitscore to normalize
+  # max_bitscore: the maximum bitscore observed for that query
+  normalized_bitscore <- bitscore / max_bitscore
+  return(normalized_bitscore)
+}
+
+normalized_bitscore <- function(bitscore, max_bitscore){
+  normalized_bitscore <- bitscore*exp(-10*((max_bitscore - bitscore)/max_bitscore))
+  return(normalized_bitscore)
+}
+
 # read BLAST results ---------------------------------------------------
 
 # read in BLAST results
@@ -203,7 +221,7 @@ blast <- blast %>%
 # calculate how specific matches are to a given kingdom using gini and entropy
 group_specificity <- blast %>%
   group_specificy_indices(kingdoms = groups)
-  
+
 # calculate the max_bitscore and the min_evalue for each donor group and the acceptor group per query
 best_match_per_group_values <- blast %>%
   group_by(qseqid, kingdom) %>%
@@ -299,3 +317,45 @@ candidates <- candidates %>%
 
 write_tsv(candidates, blast_hgt_out)
 write_tsv(candidates[ , 1], gene_lst_out, col_names = FALSE)
+
+# mess around -------------------------------------------------------------
+
+tmp <- blast %>%
+  # remove queries that are only fungi
+  filter(!qseqid %in% only_acceptor_group_matches$qseqid) %>%
+  # normalize bitscores
+  group_by(qseqid) %>%
+  mutate(max_bitscore = max(corrected_bitscore),
+         normalized_bitscore_01 = normalized_bitscore_01(corrected_bitscore, max_bitscore),
+         normalized_bitscore = normalized_bitscore(corrected_bitscore, max_bitscore)) %>%
+  ungroup() %>%
+  # sum over normalized bitscores within groups (ingroup, outgroups)
+  group_by(qseqid, kingdom) %>%
+  summarize(sum_bitscore_per_group_01 = sum(normalized_bitscore_01),
+            sum_bitscore_per_group = sum(normalized_bitscore))
+
+tmp_acceptor <- tmp %>%
+  filter(kingdom %in% acceptor_group) %>%
+  select(qseqid,
+         acceptor_kingdom = kingdom,
+         acceptor_sum_bitscore_per_group = sum_bitscore_per_group,
+         acceptor_sum_bitscore_per_group_01 = sum_bitscore_per_group_01)
+
+tmp_donor <- tmp %>%
+  filter(!kingdom %in% acceptor_group) %>%
+  select(qseqid, 
+         donor_kingdom = kingdom,
+         donor_sum_bitscore_per_group = sum_bitscore_per_group,
+         donor_sum_bitscore_per_group_01 = sum_bitscore_per_group_01)  
+
+tmp2 <- left_join(tmp_acceptor, tmp_donor, by = "qseqid") %>%
+  mutate(ahs_01 = ahs(sum_bitscore_donor = donor_sum_bitscore_per_group_01, sum_bitscore_acceptor = acceptor_sum_bitscore_per_group_01),
+         ahs = ahs(sum_bitscore_donor = donor_sum_bitscore_per_group, sum_bitscore_acceptor = acceptor_sum_bitscore_per_group),
+         color = ifelse(ahs_01 > 0 & ahs > 0, "both", 
+                        ifelse(ahs_01 > 0 & ahs < 0, "only_ahs_01", 
+                               ifelse(ahs_01 < 0 & ahs > 0, "only_ahs", "both_not")))) %>%
+  filter(color != "both_not")
+
+ggplot(tmp2, aes(x = ahs, y = ahs_01, color = color)) +
+  geom_point() +
+  theme_classic()
