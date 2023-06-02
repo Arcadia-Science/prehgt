@@ -7,15 +7,15 @@
 def summary_params = NfcoreSchema.paramsSummaryMap(workflow, params)
 
 // Check input path parameters to see if they exist
-def checkPathParamList = [params.input, params.blast_db, params.blast_db_tax, params.eggnog_db, params.eggnog_dmnd, params.hmm_db]
+def checkPathParamList = [params.input, params.blast_db, params.blast_db_tax, params.ko_list, params.ko_profiles, params.hmm_db]
 for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
 
 // Check mandatory parameters
 if (params.input)        { ch_input = file(params.input) } else { exit 1, 'TSV file specifying genera not provided!' }
 if (params.blast_db)     { ch_BLAST_DB    = Channel.fromPath(params.blast_db) } else { exit 1, 'Path to blast database FASTA file not provided!' }
 if (params.blast_db_tax) { ch_BLAST_TAX   = Channel.fromPath(params.blast_db_tax) } else { exit 1, 'Path to blast database taxonomy SQLITE file not provided!' }
-if (params.eggnog_db)    { ch_EGGNOG_DB   = Channel.fromPath(params.eggnog_db) } else { exit 1, 'Path to eggnog database db file not provided!' }
-if (params.eggnog_dmnd)  { ch_EGGNOG_DMND = Channel.fromPath(params.eggnog_dmnd) } else { exit 1, 'Path to eggnog database dmnd file not provided!' }
+if (params.ko_list)      { ch_KO_LIST     = Channel.fromPath(params.ko_list) } else { exit 1, 'Path to ko_list file not provided!' }
+if (params.ko_profiles)  { ch_KO_PROFILES = Channel.fromPath(params.ko_profiles) } else { exit 1, 'Path to ko profiles archive not provided!' }
 if (params.hmm_db)       { ch_HMM_DB      = Channel.fromPath(params.hmm_db) } else { exit 1, 'Path to hmm database not provided!' }
 
 // Parse input file to retrieve genera to run pipeline on
@@ -48,7 +48,7 @@ include { compositional_scans_to_hgt_candidates } from '../modules/compositional
 include { combine_hgt_candidates          } from '../modules/combine_hgt_candidates'
 include { extract_hgt_candidates          } from '../modules/extract_hgt_candidates'
 include { combine_and_parse_gff_per_genus } from '../modules/combine_and_parse_gff_per_genus'
-include { eggnog_hgt_candidates           } from '../modules/eggnog_hgt_candidates'
+include { kofamscan_hgt_candidates        } from '../modules/kofamscan_hgt_candidates'
 include { hmmscan_hgt_candidates          } from '../modules/hmmscan_hgt_candidates'
 include { combine_results                 } from '../modules/combine_results'
 
@@ -82,7 +82,7 @@ workflow REHGT {
     // Annotate HGT candidates
     combine_hgt_candidates(compositional_scans_to_hgt_candidates.out.gene_lst, blastp_to_hgt_candidates.out.gene_lst)
     extract_hgt_candidates(translate_pangenome.out.aa_rep_seq, combine_hgt_candidates.out.gene_lst)
-    eggnog_hgt_candidates(ch_EGGNOG_DB, ch_EGGNOG_DMND, extract_hgt_candidates.out.fasta)
+    kofamscan_hgt_candidates(ch_KO_LIST, ch_KO_PROFILES, extract_hgt_candidates.out.fasta)
     hmmscan_hgt_candidates(ch_HMM_DB, extract_hgt_candidates.out.fasta)
     // Combine all the results
     combine_results(compositional_scans_to_hgt_candidates.out.tsv,
@@ -90,7 +90,7 @@ workflow REHGT {
                     download_reference_genomes.out.csv,
                     build_genus_pangenome.out.cluster,
                     combine_and_parse_gff_per_genus.out.tsv,
-                    eggnog_hgt_candidates.out.annotations,
+                    kofamscan_hgt_candidates.out.tsv,
                     hmmscan_hgt_candidates.out.tblout)
 }
 

@@ -14,20 +14,20 @@ blast_tsv             <- args[2]
 genomes_csv           <- args[3]
 pangenome_cluster_tsv <- args[4]
 gff_tsv               <- args[5]
-eggnog_tsv            <- args[6]
+kofamscan_tsv         <- args[6]
 hmmscan_tblout        <- args[7]
 # outputs:
 all_results_tsv       <- args[8]
 method_tally_tsv      <- args[9]
 
 # paths to test locally:
-# compositional_tsv <- "~/github/2023-rehgt-nextflow/out_full/compositional/Bigelowiella_clusters.tsv"
-# blast_tsv <- "~/github/2023-rehgt-nextflow/out_full/blastp/Bigelowiella_blastp_scores.tsv"
-# genomes_csv <- "~/github/2023-rehgt-nextflow/out_full/download/Bigelowiella_genomes.csv"
-# pangenome_cluster_tsv <- "~/github/2023-rehgt-nextflow/out_full/build/Bigelowiella_cluster.tsv"
-# gff_tsv <- "~/github/2023-rehgt-nextflow/out_full/combine/Bigelowiella_gff_info.tsv"
-# eggnog_tsv <- "~/github/2023-rehgt-nextflow/out_full/eggnog/Bigelowiella.emapper.annotations"
-# hmmscan_tblout <- "~/github/2023-rehgt-nextflow/out_full/hmmscan/Bigelowiella.tblout"
+# compositional_tsv <- "~/github/2023-rehgt/out_test/compositional/Bigelowiella_clusters.tsv"
+# blast_tsv <- "~/github/2023-rehgt/out_test/blastp/Bigelowiella_blastp_scores.tsv"
+# genomes_csv <- "~/github/2023-rehgt/out_test/download/Bigelowiella_genomes.csv"
+# pangenome_cluster_tsv <- "~/github/2023-rehgt/out_test/build/Bigelowiella_cluster.tsv"
+# gff_tsv <- "~/github/2023-rehgt/out_test/combine/Bigelowiella_gff_info.tsv"
+# kofamscan_tsv <- "~/github/2023-rehgt/out_test/kofamscan/Bigelowiella_kofamscan.tsv"
+# hmmscan_tblout <- "~/github/2023-rehgt/out_test/hmmscan/Bigelowiella.tblout"
 
 # functions ---------------------------------------------------------------
 
@@ -144,17 +144,21 @@ gff <- gff %>%
   unnest(hgt_candidate) %>%
   distinct()
   
-# read in eggnog annotations ---------------------------------------------
+# read in kofamscan annotations ---------------------------------------------
 
-eggnog <- eggnog_tsv %>%
+kofamscan <- kofamscan_tsv %>%
   set_names() %>%
-  map_dfr(read_tsv, col_types = "ccddccccccccccccccccc", skip = 4, comment = "##", .id = "genus") %>%
-  clean_names() %>%
-  rename_with( ~ paste0("eggnog_", .x)) %>%
-  rename(hgt_candidate = eggnog_number_query, genus = eggnog_genus) %>%
-  mutate(genus = gsub(".emapper.annotations", "", basename(genus))) %>%
+  map_dfr(read_tsv, col_types = "cccdddc", comment = "#", .id = "genus", col_names = c("tmp", "hgt_candidate", "ko", "threshold", "score", "evalue", "ko_definition")) %>%
+  select(-tmp) %>% # rm col with only asterisk
+  rename_with( ~ paste0("kofamscan_", .x)) %>%
+  rename(hgt_candidate = kofamscan_hgt_candidate, genus = kofamscan_genus) %>%
+  mutate(genus = gsub("_kofamscan.tsv", "", basename(genus))) %>%
+  # only select the best match for each hgt candidate
+  group_by(genus, hgt_candidate) %>%
+  arrange(desc(kofamscan_score)) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
   distinct()
-
 
 # read in hmm annotations -------------------------------------------------
 
@@ -190,7 +194,7 @@ hmmscan <- hmmscan_tblout %>%
 all_candidates <- full_join(compositional, blast, by = c("hgt_candidate", "genus"))
 
 # add in the rest of the information
-all_candidates <- left_join(all_candidates, eggnog, by = c("hgt_candidate", "genus")) %>%
+all_candidates <- left_join(all_candidates, kofamscan, by = c("hgt_candidate", "genus")) %>%
   left_join(hmmscan, by = c("hgt_candidate", "genus")) %>%
   left_join(pangenome_cluster_sizes, by = c("hgt_candidate", "genus"))  %>%
   left_join(pangenome_size, by = "genus") %>%
