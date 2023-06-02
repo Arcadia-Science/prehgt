@@ -1,0 +1,11 @@
+{
+    "name": "Arcadia-Science/2023-rehgt",
+    "homePage": "https://github.com/Arcadia-Science/2023-rehgt",
+    "repos": {
+        "https://github.com/nf-core/modules.git": {
+            "modules": {
+                "nf-core": {}
+            }
+        }
+    }
+}
