@@ -74,12 +74,17 @@ clusters <- clusters %>%
   select(cluster=".") %>% # rename the column to cluster
   rownames_to_column("cds") # move gene name row name to column
 
-# filter to clusters that contain less than 150 genes
-# note 150 is a totally empiric guess from limited data gazing
+# calculate cluster threshold. Relax the threshold if the pseudopangenome is small.
+if(nrow(raau) < 1000){
+  min_cluster_size <- round(0.01 * nrow(raau)) # clusters must contain 1% of total proteins or fewer
+} else {
+  min_cluster_size <- round(0.001 * nrow(raau)) # clusters must contain 0.1% of total proteins or fewer
+}
+
 small_clusters <- clusters %>%
   group_by(cluster) %>%
   tally() %>%
-  filter(n < 150)
+  filter(n <= min_cluster_size)
 
 # filter to genes in small clusters
 clusters <- clusters %>%
