@@ -10,7 +10,7 @@
             "type": "object",
             "fa_icon": "fas fa-terminal",
             "description": "Define where the pipeline should find input data and save output data.",
-            "required": ["input", "outdir", "blast_db", "blast_db_tax"],
+            "required": ["input", "outdir", "blast_db", "blast_db_tax", "hmm_db"],
             "properties": {
                 "input": {
                     "type": "string",
@@ -41,17 +41,19 @@
                     "description": "Path to a SQLITE database containing taxonomy information for blast_db sequences.",
                     "help_text": "This file should contain taxonomic lineages (names and taxids) for the FASTA sequences in the blast_db."
                 },
-                "eggnog_db": {
+                "ko_list": {
                     "type": "string",
                     "format": "file-path",
-                    "description": "Specify EGGNOG database (.db) file path.",
-                    "help_text": "Path to a EGGNOG database .db file. This file can be retrieved with the rest of the EGGNOG database using the command download_eggnog_data.py in the eggnog-mapper software package."
+                    "mimetype": "gzip archive",
+                    "description": "Path to gzipped text file of KEGG orthologs for kofamscan.",
+                    "help_text": "File can be downloaded from ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz."
                 },
-                "eggnog_dmnd": {
+                "ko_profiles": {
                     "type": "string",
                     "format": "file-path",
-                    "description": "Specify EGGNOG database diamond (.dmnd) file path.",
-                    "help_text": "Path to a EGGNOG database diamond .dmnd file. This file can be retrieved with the rest of the EGGNOG database using the command download_eggnog_data.py in the eggnog-mapper software package."
+                    "mimetype": "tar archive",
+                    "description": "Path to tar archive file containing KEGG ortholog HMM profiles for kofamscan.",
+                    "help_text": "File can be downloaded from ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz."
                 },
                 "hmm_db": {
                     "type": "string",
