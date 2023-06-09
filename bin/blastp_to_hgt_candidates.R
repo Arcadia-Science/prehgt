@@ -46,7 +46,7 @@ ahs_index <- function(sum_bitscore_donor, sum_bitscore_acceptor){
   return(diff)
 }
 
-# define a function to calculate how distributed a protein is
+# define a function to calculate how distributed a protein is among different kingdoms
 donor_distribution_index <- function(n, num_matches_per_group){
   # * donor distribution_index: a measure of the distribution of the gene across the 
   #   tree of life. Excluding matches within the acceptor group, the top 50 BLAST
