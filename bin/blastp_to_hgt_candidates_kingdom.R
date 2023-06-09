@@ -209,7 +209,7 @@ candidates_donor <- candidates %>%
          donor_min_evalue = min_evalue, 
          donor_num_matches_at_lineage = num_matches_per_group,
          donor_best_match_id = best_match, 
-         donor_best_match_lineage = best_match_lineage, 
+         donor_best_match_full_lineage = best_match_lineage, 
          donor_best_match_pident = best_match_pident)
 
 # from candidate donor groups, calculate the donor distribution index
@@ -272,7 +272,7 @@ candidates <- candidates %>%
   left_join(acceptor_lca, by = "qseqid") %>%
   left_join(donor_dist_index, by = c("qseqid", "donor_lineage_at_hgt_taxonomy_level", "donor_max_bitscore", 
                                      "donor_min_evalue", "donor_num_matches_at_lineage",
-                                     "donor_best_match_id", "donor_best_match_lineage",
+                                     "donor_best_match_id", "donor_best_match_full_lineage",
                                      "donor_best_match_pident")) %>%
   left_join(group_specificity, by = "qseqid") %>%
   left_join(ahs, by = c("qseqid", "acceptor_lineage_at_hgt_taxonomy_level", "donor_lineage_at_hgt_taxonomy_level")) %>%
