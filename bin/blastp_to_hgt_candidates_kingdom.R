@@ -280,6 +280,17 @@ candidates <- candidates %>%
 
 # predict candidate HGT events based on results ---------------------------
 
+# reorder outputs
+candidates <- candidates %>%
+  select(qseqid, hgt_taxonomy_level, acceptor_lineage_at_hgt_taxonomy_level, 
+         acceptor_num_matches_at_lineage, acceptor_lca_level, acceptor_max_pident,
+         acceptor_max_bitscore, acceptor_min_evalue, donor_lineage_at_hgt_taxonomy_level,
+         donor_lineage_at_hgt_taxonomy_level, donor_num_matches_at_lineage,
+         donor_best_match_full_lineage, donor_best_match_id, donor_best_match_pident,
+         donor_max_bitscore, donor_min_evalue,   
+         alien_index, hgt_index, donor_distribution_index, entropy, entropy_normalized, 
+         gini, acceptor_sum_bitscore_per_group_01, donor_sum_bitscore_per_group_01, ahs_01_index)
+
 # filter to genes that have the potential to be HGT events. 
 # * alien index > 0 "indicates a better hit to candidate donor than recipient taxa and a possible HGT" (10.3390/genes8100248).
 # * ahs > 0 "a positive AHS score suggests a potential HGT candidate" (10.1371/journal.pcbi.1010686);
