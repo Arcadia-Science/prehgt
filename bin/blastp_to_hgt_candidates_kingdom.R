@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 library(tidyverse)
+source("bin/functions.R")
 
 # command line args -------------------------------------------------------
 
@@ -41,11 +42,6 @@ hgt_index <- function(bitscore_donor, bitscore_acceptor) {
   return(diff)
 }
 
-ahs_index <- function(sum_bitscore_donor, sum_bitscore_acceptor){
-  diff <- sum_bitscore_donor - sum_bitscore_acceptor
-  return(diff)
-}
-
 # define a function to calculate how distributed a protein is among different kingdoms
 donor_distribution_index <- function(n, num_matches_per_group){
   # * donor distribution_index: a measure of the distribution of the gene across the 
@@ -68,36 +64,6 @@ donor_distribution_index <- function(n, num_matches_per_group){
   max_num_matches <- max(num_matches_per_group)
   donor_distribution_index <- sum(1 - (num_matches_per_group/max_num_matches)) / (n - 1)
   return(donor_distribution_index)
-}
-
-lca <- function(lineage_df){
-  # given a data frame with lineage columns kingdom, phylum, class, order,
-  # genus, and species, calculate the taxonomy level that the lowest common 
-  # ancestor of all observations.
-  lineage_df <- lineage_df %>%
-    # group by query protein id
-    group_by(qseqid) %>%
-    # count how many of each taxonomic lineage level was observed
-    mutate(n_distinct_kingdom = n_distinct(kingdom),
-           n_distinct_phylum = n_distinct(phylum),
-           n_distinct_class = n_distinct(class),
-           n_distinct_order = n_distinct(order),
-           n_distinct_genus = n_distinct(genus),
-           n_distinct_species = n_distinct(species)) %>%
-    ungroup() %>%
-    # keep only the query id and tallying columns
-    select(qseqid, starts_with("n_distinct")) %>%
-    # filter to distinct
-    distinct() %>%
-    # figure out which level the LCA occurs at
-    mutate(acceptor_lca_level = ifelse(n_distinct_species == 1, "species",
-                                       ifelse(n_distinct_genus == 1, "genus",
-                                              ifelse(n_distinct_order == 1, "order",
-                                                     ifelse(n_distinct_class == 1, "class",
-                                                            ifelse(n_distinct_phylum == 1, "phylum", "kingdom")))))) %>%
-    select(qseqid, acceptor_lca_level)
-  
-  return(lineage_df)
 }
 
 gini <- function(x) {
@@ -153,30 +119,11 @@ group_specificity_indices <- function(df, kingdoms) {
   return(all)
 }
 
-normalized_bitscore_01 <- function(bitscore, max_bitscore){
-  # calculate a normalized bitscore on a 0-1 scale
-  # bitscore: the bitscore to normalize
-  # max_bitscore: the maximum bitscore observed for that query
-  normalized_bitscore <- bitscore / max_bitscore
-  return(normalized_bitscore)
-}
-
 # read BLAST results ---------------------------------------------------
 
 # read in BLAST results
-#blast <- read_tsv("~/github/2023-rehgt/outputs/blast_diamond/Agrocybe_vs_clustered_nr_lineages.tsv", col_types = "ccccdddddddddddddddddccccccccc")
-blast <- read_tsv(blast_tsv, col_types = "ccccdddddddddddddddddccccccccc")
-# edit kingdom to seven categories
-blast <- blast %>%
-  mutate(kingdom = ifelse(kingdom == "unclassified Bacteria kingdom", "Bacteria", kingdom),
-         kingdom = ifelse(kingdom %in% c('Bamfordvirae', 'unclassified Viruses kingdom', 'Heunggongvirae', 'Orthornavirae'), "Virus", kingdom),
-         kingdom = ifelse(kingdom == "unclassified Archaea kingdom", "Archaea", kingdom),
-         kingdom = ifelse(kingdom == "unclassified Eukaryota kingdom", "Other Eukaryota", kingdom)) %>%
-  # filter out unclassified. Matches are to synthetic constructs that don't have taxonomies, or to clusters that don't have a superkingdom LCA (taxid 0)
-  filter(!kingdom %in% c("unclassified unclassified entries kingdom",
-                         "unclassified other entries kingdom",
-                         "unclassified root kingdom",
-                         "unclassified cellular organisms kingdom"))
+#blast_tsv <- "~/github/2023-rehgt/outputs/blast_diamond/Psilocybe_vs_clustered_nr_lineages.tsv"
+blast <- read_and_filter_blast_results(blast_tsv) 
 
 # set acceptor and donor groups -------------------------------------------
 
@@ -194,7 +141,6 @@ donor_groups <- groups[!groups %in% acceptor_group]
 
 # parse BLAST results -----------------------------------------------------
 
-# filter the BLAST matches
 blast <- blast %>%
   # filter out exact matches as these should not be used for calculation of indices. 
   # bc of clustering, not every input protein will have a perfect match in the database
@@ -204,14 +150,7 @@ blast <- blast %>%
   filter(!str_detect(string = qseqid, pattern = sseqid)) %>%
   # filter out matches to groups outside of the defined donor/acceptor groups
   # and those with missing values
-  filter(kingdom %in% c(donor_groups, acceptor_group)) %>%
-  # aerolysin example: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3424411/
-  # based on aerolysin example: if corrected_bitscore is less than 100, make sure the length of the match is >70% of the original protein
-  # filter out matches with a pident < 30%? bitscore 100? NEED INPUT
-  mutate(keep = ifelse(corrected_bitscore >= 100, "keep",
-                       ifelse(qcovhsp >=0.7, "keep", "filter"))) %>%
-  filter(keep == "keep") %>%
-  select(-keep)
+  filter(kingdom %in% c(donor_groups, acceptor_group)) 
 
 # calculate how specific matches are to a given kingdom using gini and entropy
 group_specificity <- blast %>%
@@ -257,7 +196,7 @@ candidates <- combined %>%
 # separate candidates into donor and acceptor groups and reformat, and then re-join together to calculate indices
 candidates_acceptor <- candidates %>%
   filter(kingdom == acceptor_group) %>%
-  select(qseqid, acceptor_group = kingdom, 
+  select(qseqid, acceptor_lineage_at_hgt_taxonomy_level = kingdom, 
          acceptor_max_bitscore = max_bitscore,
          acceptor_min_evalue = min_evalue, 
          acceptor_num_matches_per_group = num_matches_per_group,
@@ -265,7 +204,7 @@ candidates_acceptor <- candidates %>%
 
 candidates_donor <- candidates %>%
   filter(kingdom %in% donor_groups) %>%
-  select(qseqid, donor_group = kingdom, 
+  select(qseqid, donor_lineage_at_hgt_taxonomy_level = kingdom, 
          donor_max_bitscore = max_bitscore,
          donor_min_evalue = min_evalue, 
          donor_num_matches_per_group = num_matches_per_group,
@@ -312,14 +251,14 @@ sum_bitscore <- blast %>%
 acceptor_sum_bitscore <- sum_bitscore %>%
   filter(kingdom %in% acceptor_group) %>%
   select(qseqid,
-         acceptor_group = kingdom,
+         acceptor_lineage_at_hgt_taxonomy_level = kingdom,
          acceptor_sum_bitscore_per_group_01 = sum_bitscore_per_group_01)
 
 # separate out donor group sum bitscore values
 donor_sum_bitscore <- sum_bitscore %>%
   filter(!kingdom %in% acceptor_group) %>%
   select(qseqid, 
-         donor_group = kingdom,
+         donor_lineage_at_hgt_taxonomy_level = kingdom,
          donor_sum_bitscore_per_group_01 = sum_bitscore_per_group_01)  
 
 # calculate AHS using 0-1 normalized bitscores (departure from 10.1371/journal.pcbi.1010686)
@@ -331,12 +270,13 @@ ahs <- left_join(acceptor_sum_bitscore, donor_sum_bitscore, by = "qseqid") %>%
 # join everything together
 candidates <- candidates %>%
   left_join(acceptor_lca, by = "qseqid") %>%
-  left_join(donor_dist_index, by = c("qseqid", "donor_group", "donor_max_bitscore", 
+  left_join(donor_dist_index, by = c("qseqid", "donor_lineage_at_hgt_taxonomy_level", "donor_max_bitscore", 
                                      "donor_min_evalue", "donor_num_matches_per_group",
                                      "donor_best_match", "donor_best_match_lineage",
                                      "donor_best_match_pident")) %>%
   left_join(group_specificity, by = "qseqid") %>%
-  left_join(ahs, by = c("qseqid", "acceptor_group", "donor_group"))
+  left_join(ahs, by = c("qseqid", "acceptor_lineage_at_hgt_taxonomy_level", "donor_lineage_at_hgt_taxonomy_level")) %>%
+  mutate(hgt_taxonomy_level = "kingdom") # explicitly label hgt taxonomy level
 
 # predict candidate HGT events based on results ---------------------------
 
