@@ -189,7 +189,7 @@ hmmscan <- hmmscan_tblout %>%
   relocate(hmmscan_description, .after = hmmscan_domain_name) %>%
   distinct()
 
-# combine and write outputs -----------------------------------------------
+# combine all information -------------------------------------------------
 
 all_candidates <- full_join(compositional, blast, by = c("hgt_candidate", "genus"))
 
@@ -205,6 +205,37 @@ all_candidates <- left_join(all_candidates, kofamscan, by = c("hgt_candidate", "
          method = ifelse(hgt_candidate %in% blast$hgt_candidate & hgt_candidate %in% compositional$hgt_candidate, "both", method),
          .after = hgt_candidate) %>%
   distinct()
+
+# label HGT candidates based on all information ---------------------------
+
+# contamination labeling rules
+# * if it’s only in one genome, mark as likely contamination if:
+#    * percent identity is > 90% OR (rationale: not enough info to support that it’s real, and a long contig could be a chimeric assembly)
+#    * percent identity > 70% and the contig length is less than 20kbp (it’s both short and high-ish identity, so don’t trust it)
+# * if it’s in more than one genome, mark as likely contamination if:
+#    * percent identity is >90% AND contig length is less than 20kbp (assumes that the same contaminant snuck into multiple genomes of the same genus)
+
+label_contamination <- function(all_candidates_df){
+  all_candidates_df <- all_candidates_df %>%
+    mutate(blast_contamination = ifelse(pangenome_size == 1 & blast_donor_best_match_pident >= 90, "0 likely contamination",
+                                        ifelse(pangenome_size == 1 & blast_donor_best_match_pident >= 70 & gff_seqid_length <= 20000, "0 likely contamination",
+                                               ifelse(pangenome_size > 1 & pangenome_num_genes_in_cluster > 1 & blast_donor_best_match_pident >= 90 & gff_seqid_length <= 20000, "0 likely contamination", "likely not contamination"))))
+  return(all_candidates_df$blast_contamination)
+}
+
+# label BLAST. Note that this logic almost exclusively relies on alien index. 
+# until we have run this many times and cross checked our results with tree-based approaches, I think this is good enough for now.
+# will require very good documentation to make this decision clear, and to educate around HGT index etc.
+all_candidates_tmp <- all_candidates %>%
+  mutate(blast_contamination = label_contamination(.)) %>%
+  mutate(blast_HGT_score = ifelse(blast_alien_index >= 45, "3 highly likely HGT", NA),
+         blast_HGT_score = ifelse(blast_alien_index < 45 & blast_alien_index > 15, "2 likely HGT", blast_HGT_score),
+         blast_HGT_score = ifelse(blast_alien_index < 15, "1 possible HGT", blast_HGT_score),
+         # relabel potential contaminants
+         blast_HGT_score = ifelse(blast_contamination == "0 likely contamination", "0 likely contamination", blast_HGT_score)) %>%
+  select(-blast_contamination)
+
+# write outputs -----------------------------------------------------------
 
 write_tsv(all_candidates, all_results_tsv)
 

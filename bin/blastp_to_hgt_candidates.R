@@ -345,11 +345,7 @@ candidates <- candidates %>%
 # * ahs > 0 "a positive AHS score suggests a potential HGT candidate" (10.1371/journal.pcbi.1010686);
 #   While the paper used a more sophisticated bitscore normalization method, we found that 0-1 normalization and looking at positive scores identified what look like real HGT candidates
 candidates <- candidates %>%  
-  filter(alien_index > 0 | ahs_01_index > 0 | hgt_index > 0) %>%
-  mutate(HGT_score = ifelse(alien_index >= 45, "Highly likely HGT", "Likely contamination"),
-         HGT_score = ifelse(alien_index < 45 & alien_index > 15, "Likely HGT", HGT_score),
-         HGT_score = ifelse(alien_index < 15, "Possible HGT", HGT_score),
-         HGT_score = ifelse(donor_best_match_pident > 80, "Likely contamination", HGT_score))
+  filter(alien_index > 0 | ahs_01_index > 0 | hgt_index > 0) 
 
 write_tsv(candidates, blast_hgt_out)
 write_tsv(candidates[ , 1], gene_lst_out, col_names = FALSE)
