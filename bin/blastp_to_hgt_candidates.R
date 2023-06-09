@@ -46,7 +46,7 @@ ahs_index <- function(sum_bitscore_donor, sum_bitscore_acceptor){
   return(diff)
 }
 
-# define a function to calculate how distributed a protein is
+# define a function to calculate how distributed a protein is among different kingdoms
 donor_distribution_index <- function(n, num_matches_per_group){
   # * donor distribution_index: a measure of the distribution of the gene across the 
   #   tree of life. Excluding matches within the acceptor group, the top 50 BLAST
@@ -108,7 +108,7 @@ gini <- function(x) {
 }
 
 # add more (better?) indices that report on how distributed a protein is across groups
-group_specificy_indices <- function(df, kingdoms) {
+group_specificity_indices <- function(df, kingdoms) {
   # * df: a data frame with qseqid and kingdom columns
   # * kingdoms: a vector of kingdom values, e.g. c("Fungi", "Viridiplantae", "Bacteria", "Other Eukaryota", "Metazoa", "Archaea", "Virus")
   # * entropy: a measure of the uncertainty or randomness of a set of probabilities. 
@@ -140,7 +140,7 @@ group_specificy_indices <- function(df, kingdoms) {
     mutate(specificity = n / sum(n)) %>%
     ungroup()
   
-  # use specificy to calculate entropy and counts to calculate gini coefficient
+  # use specificity to calculate entropy and counts to calculate gini coefficient
   all <- df %>%
     group_by(qseqid) %>%
     mutate(entropy = -sum(specificity * log2(specificity), na.rm = TRUE),
@@ -215,8 +215,8 @@ blast <- blast %>%
 
 # calculate how specific matches are to a given kingdom using gini and entropy
 group_specificity <- blast %>%
-  group_specificy_indices(kingdoms = groups)
-
+  group_specificity_indices(kingdoms = groups)
+  
 # calculate the max_bitscore and the min_evalue for each donor group and the acceptor group per query
 best_match_per_group_values <- blast %>%
   group_by(qseqid, kingdom) %>%
@@ -343,7 +343,7 @@ candidates <- candidates %>%
 # filter to genes that have the potential to be HGT events. 
 # * alien index > 0 "indicates a better hit to candidate donor than recipient taxa and a possible HGT" (10.3390/genes8100248).
 # * ahs > 0 "a positive AHS score suggests a potential HGT candidate" (10.1371/journal.pcbi.1010686);
-#   While the paper used a more sophisticated bitscore normalization method, we found that 0-1 normalization and looking at positive scores identified what look like real HGT candidate
+#   While the paper used a more sophisticated bitscore normalization method, we found that 0-1 normalization and looking at positive scores identified what look like real HGT candidates
 candidates <- candidates %>%  
   filter(alien_index > 0 | ahs_01_index > 0 | hgt_index > 0) 
 
