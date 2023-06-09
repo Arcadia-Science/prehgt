@@ -41,7 +41,12 @@ hgt_index <- function(bitscore_donor, bitscore_acceptor) {
   return(diff)
 }
 
-# define a function to calculate how distributed a protein is
+ahs_index <- function(sum_bitscore_donor, sum_bitscore_acceptor){
+  diff <- sum_bitscore_donor - sum_bitscore_acceptor
+  return(diff)
+}
+
+# define a function to calculate how distributed a protein is among different kingdoms
 donor_distribution_index <- function(n, num_matches_per_group){
   # * donor distribution_index: a measure of the distribution of the gene across the 
   #   tree of life. Excluding matches within the acceptor group, the top 50 BLAST
@@ -148,6 +153,14 @@ group_specificity_indices <- function(df, kingdoms) {
   return(all)
 }
 
+normalized_bitscore_01 <- function(bitscore, max_bitscore){
+  # calculate a normalized bitscore on a 0-1 scale
+  # bitscore: the bitscore to normalize
+  # max_bitscore: the maximum bitscore observed for that query
+  normalized_bitscore <- bitscore / max_bitscore
+  return(normalized_bitscore)
+}
+
 # read BLAST results ---------------------------------------------------
 
 # read in BLAST results
@@ -230,7 +243,7 @@ num_matches_per_group <- blast %>%
 combined <- left_join(best_match_per_group_values, best_match_per_group_identities, by = c("qseqid", "kingdom")) %>%
   left_join(num_matches_per_group, by = c("qseqid", "kingdom"))
 
-# calculate HGT indices and predict candidate CDSs ------------------------
+# calculate HGT indices that rely on a single value and predict candidate CDSs ------------------------
 
 # filter out BLAST results where all matches were within the acceptor group
 only_acceptor_group_matches <- combined %>%
@@ -280,6 +293,41 @@ acceptor_lca <- blast %>%
   filter(kingdom %in% acceptor_group) %>%
   lca()
 
+# calculate aggregate indicies --------------------------------------------
+
+# normalize bitscores and then sum up bitscores within each group
+sum_bitscore <- blast %>%
+  # remove queries that are only fungi
+  filter(!qseqid %in% only_acceptor_group_matches$qseqid) %>%
+  # normalize bitscores
+  group_by(qseqid) %>%
+  mutate(max_bitscore = max(corrected_bitscore),
+         normalized_bitscore_01 = normalized_bitscore_01(corrected_bitscore, max_bitscore)) %>%
+  ungroup() %>%
+  # sum over normalized bitscores within groups (ingroup, outgroups)
+  group_by(qseqid, kingdom) %>%
+  summarize(sum_bitscore_per_group_01 = sum(normalized_bitscore_01))
+
+# separate out acceptor group sum bitscore values
+acceptor_sum_bitscore <- sum_bitscore %>%
+  filter(kingdom %in% acceptor_group) %>%
+  select(qseqid,
+         acceptor_group = kingdom,
+         acceptor_sum_bitscore_per_group_01 = sum_bitscore_per_group_01)
+
+# separate out donor group sum bitscore values
+donor_sum_bitscore <- sum_bitscore %>%
+  filter(!kingdom %in% acceptor_group) %>%
+  select(qseqid, 
+         donor_group = kingdom,
+         donor_sum_bitscore_per_group_01 = sum_bitscore_per_group_01)  
+
+# calculate AHS using 0-1 normalized bitscores (departure from 10.1371/journal.pcbi.1010686)
+ahs <- left_join(acceptor_sum_bitscore, donor_sum_bitscore, by = "qseqid") %>%
+  mutate(ahs_01_index = ahs_index(sum_bitscore_donor = donor_sum_bitscore_per_group_01, sum_bitscore_acceptor = acceptor_sum_bitscore_per_group_01))
+
+# combine results ---------------------------------------------------------
+
 # join everything together
 candidates <- candidates %>%
   left_join(acceptor_lca, by = "qseqid") %>%
@@ -287,11 +335,17 @@ candidates <- candidates %>%
                                      "donor_min_evalue", "donor_num_matches_per_group",
                                      "donor_best_match", "donor_best_match_lineage",
                                      "donor_best_match_pident")) %>%
-  left_join(group_specificity, by = "qseqid")
+  left_join(group_specificity, by = "qseqid") %>%
+  left_join(ahs, by = c("qseqid", "acceptor_group", "donor_group"))
 
-# filter; alien index > 0 "indicates a better hit to candidate donor than recipient taxa and a possible HGT" (10.3390/genes8100248).
-candidates <- candidates %>%
-  filter(alien_index > 0) %>%
+# predict candidate HGT events based on results ---------------------------
+
+# filter to genes that have the potential to be HGT events. 
+# * alien index > 0 "indicates a better hit to candidate donor than recipient taxa and a possible HGT" (10.3390/genes8100248).
+# * ahs > 0 "a positive AHS score suggests a potential HGT candidate" (10.1371/journal.pcbi.1010686);
+#   While the paper used a more sophisticated bitscore normalization method, we found that 0-1 normalization and looking at positive scores identified what look like real HGT candidates
+candidates <- candidates %>%  
+  filter(alien_index > 0 | ahs_01_index > 0 | hgt_index > 0) %>%
   mutate(HGT_score = ifelse(alien_index >= 45, "Highly likely HGT", "Likely contamination"),
          HGT_score = ifelse(alien_index < 45 & alien_index > 15, "Likely HGT", HGT_score),
          HGT_score = ifelse(alien_index < 15, "Possible HGT", HGT_score),
