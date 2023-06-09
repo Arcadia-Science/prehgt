@@ -199,7 +199,7 @@ candidates_acceptor <- candidates %>%
   select(qseqid, acceptor_lineage_at_hgt_taxonomy_level = kingdom, 
          acceptor_max_bitscore = max_bitscore,
          acceptor_min_evalue = min_evalue, 
-         acceptor_num_matches_per_group = num_matches_per_group,
+         acceptor_num_matches_at_lineage = num_matches_per_group,
          acceptor_max_pident = best_match_pident)
 
 candidates_donor <- candidates %>%
@@ -207,7 +207,7 @@ candidates_donor <- candidates %>%
   select(qseqid, donor_lineage_at_hgt_taxonomy_level = kingdom, 
          donor_max_bitscore = max_bitscore,
          donor_min_evalue = min_evalue, 
-         donor_num_matches_per_group = num_matches_per_group,
+         donor_num_matches_at_lineage = num_matches_per_group,
          donor_best_match = best_match, 
          donor_best_match_lineage = best_match_lineage, 
          donor_best_match_pident = best_match_pident)
@@ -216,7 +216,7 @@ candidates_donor <- candidates %>%
 donor_dist_index <- candidates_donor %>%
   group_by(qseqid) %>%
   mutate(donor_distribution_index = donor_distribution_index(n = length(donor_groups), 
-                                                             num_matches_per_group = donor_num_matches_per_group))
+                                                             num_matches_per_group = donor_num_matches_at_lineage))
 
 # rejoin information together to calculate alien index and horizontal gene transfer index
 candidates <- left_join(candidates_acceptor, candidates_donor, by = "qseqid", multiple = "all")
@@ -271,7 +271,7 @@ ahs <- left_join(acceptor_sum_bitscore, donor_sum_bitscore, by = "qseqid") %>%
 candidates <- candidates %>%
   left_join(acceptor_lca, by = "qseqid") %>%
   left_join(donor_dist_index, by = c("qseqid", "donor_lineage_at_hgt_taxonomy_level", "donor_max_bitscore", 
-                                     "donor_min_evalue", "donor_num_matches_per_group",
+                                     "donor_min_evalue", "donor_num_matches_at_lineage",
                                      "donor_best_match", "donor_best_match_lineage",
                                      "donor_best_match_pident")) %>%
   left_join(group_specificity, by = "qseqid") %>%
