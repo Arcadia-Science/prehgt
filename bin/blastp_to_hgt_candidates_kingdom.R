@@ -284,7 +284,7 @@ candidates <- candidates %>%
 candidates <- candidates %>%
   select(qseqid, hgt_taxonomy_level, acceptor_lineage_at_hgt_taxonomy_level, 
          acceptor_num_matches_at_lineage, acceptor_lca_level, acceptor_max_pident,
-         acceptor_max_bitscore, acceptor_min_evalue, donor_lineage_at_hgt_taxonomy_level,
+         acceptor_max_bitscore, acceptor_min_evalue,
          donor_lineage_at_hgt_taxonomy_level, donor_num_matches_at_lineage,
          donor_best_match_full_lineage, donor_best_match_id, donor_best_match_pident,
          donor_max_bitscore, donor_min_evalue,   
