@@ -343,7 +343,7 @@ candidates <- candidates %>%
 # filter to genes that have the potential to be HGT events. 
 # * alien index > 0 "indicates a better hit to candidate donor than recipient taxa and a possible HGT" (10.3390/genes8100248).
 # * ahs > 0 "a positive AHS score suggests a potential HGT candidate" (10.1371/journal.pcbi.1010686);
-#   While the paper used a more sophisticated bitscore normalization method, we found that 0-1 normalization and looking at positive scores identified what look like real HGT candidate
+#   While the paper used a more sophisticated bitscore normalization method, we found that 0-1 normalization and looking at positive scores identified what look like real HGT candidates
 candidates <- candidates %>%  
   filter(alien_index > 0 | ahs_01_index > 0 | hgt_index > 0) %>%
   mutate(HGT_score = ifelse(alien_index >= 45, "Highly likely HGT", "Likely contamination"),
