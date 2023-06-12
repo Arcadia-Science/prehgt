@@ -123,7 +123,7 @@ group_specificity_indices <- function(df, kingdoms) {
 
 # read in BLAST results
 #blast_tsv <- "~/github/2023-rehgt/outputs/blast_diamond/Psilocybe_vs_clustered_nr_lineages.tsv"
-blast <- read_and_filter_blast_results(blast_tsv) 
+blast <- read_and_filter_blast_results(blast_tsv)
 
 # set acceptor and donor groups -------------------------------------------
 
@@ -200,7 +200,8 @@ candidates_acceptor <- candidates %>%
          acceptor_max_bitscore = max_bitscore,
          acceptor_min_evalue = min_evalue, 
          acceptor_num_matches_at_lineage = num_matches_per_group,
-         acceptor_max_pident = best_match_pident)
+         acceptor_max_pident = best_match_pident,
+         acceptor_best_nonself_match_id = best_match)
 
 candidates_donor <- candidates %>%
   filter(kingdom %in% donor_groups) %>%
@@ -283,8 +284,8 @@ candidates <- candidates %>%
 # reorder outputs
 candidates <- candidates %>%
   select(qseqid, hgt_taxonomy_level, acceptor_lineage_at_hgt_taxonomy_level, 
-         acceptor_num_matches_at_lineage, acceptor_lca_level, acceptor_max_pident,
-         acceptor_max_bitscore, acceptor_min_evalue,
+         acceptor_num_matches_at_lineage, acceptor_lca_level, acceptor_best_nonself_match_id,
+         acceptor_max_pident, acceptor_max_bitscore, acceptor_min_evalue,
          donor_lineage_at_hgt_taxonomy_level, donor_num_matches_at_lineage,
          donor_best_match_full_lineage, donor_best_match_id, donor_best_match_pident,
          donor_max_bitscore, donor_min_evalue,   
