@@ -292,9 +292,9 @@ results_best_tax_formatted <- results_best_tax_formatted1 %>%
   left_join(num_hits_per_qseqid) %>%
   left_join(donor_num_hits) %>%
   select(qseqid, hgt_taxonomy_level = taxonomy_level, acceptor_lineage_at_hgt_taxonomy_level, 
-          acceptor_lca_level, acceptor_best_nonself_match_id,
+         acceptor_lca_level, acceptor_best_nonself_match_id,
          acceptor_max_pident, acceptor_max_bitscore, acceptor_min_evalue,
-         acceptor_num_matches_at_lineage, total_num_matches, donor_num_matches_at_lineage, 
+         acceptor_num_matches_at_lineage, donor_num_matches_at_lineage, total_num_matches,
          donor_lineage_at_hgt_taxonomy_level, donor_num_matches_at_lineage,
          donor_best_match_full_lineage, donor_best_match_id, donor_best_match_pident,
          donor_max_bitscore, donor_min_evalue, transfer_index, transfer_index_p_value = p_value, 
