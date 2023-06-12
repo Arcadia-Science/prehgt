@@ -155,7 +155,13 @@ blast <- blast %>%
 # calculate how specific matches are to a given kingdom using gini and entropy
 group_specificity <- blast %>%
   group_specificity_indices(kingdoms = groups)
-  
+
+# calculate the number of BLAST hits there were per query
+num_hits_per_qseqid <- blast %>%
+  group_by(qseqid) %>%
+  tally() %>%
+  select(qseqid, total_num_matches = n)
+
 # calculate the max_bitscore and the min_evalue for each donor group and the acceptor group per query
 best_match_per_group_values <- blast %>%
   group_by(qseqid, kingdom) %>%
@@ -277,18 +283,19 @@ candidates <- candidates %>%
                                      "donor_best_match_pident")) %>%
   left_join(group_specificity, by = "qseqid") %>%
   left_join(ahs, by = c("qseqid", "acceptor_lineage_at_hgt_taxonomy_level", "donor_lineage_at_hgt_taxonomy_level")) %>%
-  mutate(hgt_taxonomy_level = "kingdom") # explicitly label hgt taxonomy level
+  mutate(hgt_taxonomy_level = "kingdom") %>% # explicitly label hgt taxonomy level
+  left_join(num_hits_per_qseqid, by = "qseqid")
 
 # predict candidate HGT events based on results ---------------------------
 
 # reorder outputs
 candidates <- candidates %>%
   select(qseqid, hgt_taxonomy_level, acceptor_lineage_at_hgt_taxonomy_level, 
-         acceptor_num_matches_at_lineage, acceptor_lca_level, acceptor_best_nonself_match_id,
+         acceptor_lca_level, acceptor_best_nonself_match_id,
          acceptor_max_pident, acceptor_max_bitscore, acceptor_min_evalue,
-         donor_lineage_at_hgt_taxonomy_level, donor_num_matches_at_lineage,
-         donor_best_match_full_lineage, donor_best_match_id, donor_best_match_pident,
-         donor_max_bitscore, donor_min_evalue,   
+         acceptor_num_matches_at_lineage, donor_num_matches_at_lineage, total_num_matches,
+         donor_lineage_at_hgt_taxonomy_level, donor_best_match_full_lineage, 
+         donor_best_match_id, donor_best_match_pident, donor_max_bitscore, donor_min_evalue,   
          alien_index, hgt_index, donor_distribution_index, entropy, entropy_normalized, 
          gini, acceptor_sum_bitscore_per_group_01, donor_sum_bitscore_per_group_01, ahs_01_index)
 
