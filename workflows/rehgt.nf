@@ -42,7 +42,7 @@ include { build_genus_pangenome           } from '../modules/build_genus_pangeno
 include { translate_pangenome             } from '../modules/translate_pangenome'
 include { blastp_against_clustered_nr     } from '../modules/blastp_against_clustered_nr'
 include { blastp_add_taxonomy_info        } from '../modules/blastp_add_taxonomy_info'
-include { blastp_to_hgt_candidates_subingdom } from '../modules/blastp_to_hgt_candidates_subkingdom'
+include { blastp_to_hgt_candidates_subkingdom } from '../modules/blastp_to_hgt_candidates_subkingdom'
 include { blastp_to_hgt_candidates_kingdom} from '../modules/blastp_to_hgt_candidates_kingdom'
 include { compositional_scans_pepstats    } from '../modules/compositional_scans_pepstats'
 include { compositional_scans_to_hgt_candidates } from '../modules/compositional_scans_to_hgt_candidates'

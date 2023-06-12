@@ -9,7 +9,8 @@ process combine_hgt_candidates {
 
     input:
     tuple val(genus), path(input_pepstats_gene_lst)
-    tuple val(genus), path(input_blastp_gene_lst)
+    tuple val(genus), path(input_blastp_kingdom_gene_lst)
+    tuple val(genus), path(input_blastp_subkingdom_gene_lst)
     
     output:
     tuple val(genus), path("*_gene_lst.txt"), emit: gene_lst
@@ -17,6 +18,6 @@ process combine_hgt_candidates {
     script:
     def prefix = task.ext.prefix ?: "${genus}"
     """
-    cat ${input_pepstats_gene_lst} ${input_blastp_gene_lst} | csvtk freq -H -f 1 | csvtk cut -f 1 -o ${prefix}_gene_lst.txt
+    cat ${input_pepstats_gene_lst} ${input_blastp_kingdom_gene_lst} ${input_blastp_subkingdom_gene_lst} | csvtk freq -H -f 1 | csvtk cut -f 1 -o ${prefix}_gene_lst.txt
     """
 }
