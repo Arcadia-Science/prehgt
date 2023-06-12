@@ -42,7 +42,8 @@ include { build_genus_pangenome           } from '../modules/build_genus_pangeno
 include { translate_pangenome             } from '../modules/translate_pangenome'
 include { blastp_against_clustered_nr     } from '../modules/blastp_against_clustered_nr'
 include { blastp_add_taxonomy_info        } from '../modules/blastp_add_taxonomy_info'
-include { blastp_to_hgt_candidates        } from '../modules/blastp_to_hgt_candidates'
+include { blastp_to_hgt_candidates_subingdom } from '../modules/blastp_to_hgt_candidates_subkingdom'
+include { blastp_to_hgt_candidates_kingdom} from '../modules/blastp_to_hgt_candidates_kingdom'
 include { compositional_scans_pepstats    } from '../modules/compositional_scans_pepstats'
 include { compositional_scans_to_hgt_candidates } from '../modules/compositional_scans_to_hgt_candidates'
 include { combine_hgt_candidates          } from '../modules/combine_hgt_candidates'
@@ -104,11 +105,14 @@ workflow REHGT {
     // Because the taxonomy sheet is so large (>60GB), the script uses an sql query executed via dplyr and dbplyr to decrease search times.
     blastp_add_taxonomy_info(ch_BLAST_TAX, blastp_against_clustered_nr.out.tsv)
 
-    // This script processes BLAST matches and their taxonomic lineages to identify HGT candidates using alien index, horizontal gene transfer index,
+    // This script processes BLAST matches and their taxonomic lineages to identify kingdom-level HGT candidates using alien index, horizontal gene transfer index,
     // donor distribution index, and acceptor lowest common ancestor calculations.
-    // It scores all candidates and highlights where contamination is likely.
-    // It writes the scores and other relevant information to a TSV file and outputs a list of candidate gene IDs.
-    blastp_to_hgt_candidates(blastp_add_taxonomy_info.out.tsv)
+    // It scores all candidates and writes the scores and other relevant information to a TSV file and outputs a list of candidate gene IDs.
+    blastp_to_hgt_candidates_kingdom(blastp_add_taxonomy_info.out.tsv)
+
+    // This script processes BLAST matches and their taxonomic lineages to identify sub-kingdom HGT candidates using transfer index.
+    // It scores all candidates and writes the scores and other relevant information to a TSV file and outputs a list of candidate gene IDs.
+    blastp_to_hgt_candidates_subkingdom(blastp_add_taxonomy_info.out.tsv)
 
     /* COMPOSITION HGT CANDIDATE PREDICTION */
 
@@ -123,7 +127,9 @@ workflow REHGT {
 
     // This process combines the lists of HGT candidate genes identified through two different methods - BLAST and compositional scans.
     // The output is a single list containing the unique genes from both input lists.
-    combine_hgt_candidates(compositional_scans_to_hgt_candidates.out.gene_lst, blastp_to_hgt_candidates.out.gene_lst)
+    combine_hgt_candidates(compositional_scans_to_hgt_candidates.out.gene_lst, 
+                           blastp_to_hgt_candidates_kingdom.out.gene_lst,
+                           blastp_to_hgt_candidates_subkingdom.out.gene_lst)
 
     // This process extracts the amino acid sequences of the HGT candidate genes from the pangenome clusters.
     // The outputs is a FASTA file containing the sequences of the identified HGT candidate genes.
@@ -141,7 +147,8 @@ workflow REHGT {
     // Combine all of the results into a single mega TSV file.
     // The results are joined either on the genus or on the HGT candidate gene name, derived from the pangenome FASTA file.
     combine_results(compositional_scans_to_hgt_candidates.out.tsv,
-                    blastp_to_hgt_candidates.out.blast_scores,
+                    blastp_to_hgt_candidates_kingdom.out.blast_scores,
+                    blastp_to_hgt_candidates_subkingdom.out.blast_scores,
                     download_reference_genomes.out.csv,
                     build_genus_pangenome.out.cluster,
                     combine_and_parse_gff_per_genus.out.tsv,
