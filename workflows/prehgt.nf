@@ -65,7 +65,7 @@ include { combine_results                 } from '../modules/combine_results'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-workflow REHGT {
+workflow PREHGT {
     /* DOWNLOAD GENOMES & GFF FILES AND PARSE */
 
     // Using user-provided genera names, this process uses the ncbi-genome-download tool to download the GFF annotation file

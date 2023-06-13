@@ -10,7 +10,7 @@ on:
 jobs:
   run-tower:
     name: Run AWS full tests
-    if: github.repository == 'taylorreiter/2023-rehgt-nextflow'
+    if: github.repository == 'Arcadia-Science/prehgt'
     runs-on: ubuntu-latest
     steps:
       - name: Launch workflow via tower
@@ -22,10 +22,10 @@ jobs:
           workspace_id: ${{ secrets.TOWER_WORKSPACE_ID }}
           access_token: ${{ secrets.TOWER_ACCESS_TOKEN }}}
           compute_env: ${{ secrets.TOWER_COMPUTE_ENV }}
-          workdir: s3://${{ secrets.AWS_S3_BUCKET }}/work/2023_rehgt_nextflow/work-${{ github.sha }}
+          workdir: s3://${{ secrets.AWS_S3_BUCKET }}/work/prehgt/work-${{ github.sha }}
           parameters: |
             {
-              "outdir": "s3://${{ secrets.AWS_S3_BUCKET }}/2023_rehgt_nextflow/results-${{ github.sha }}"
+              "outdir": "s3://${{ secrets.AWS_S3_BUCKET }}/prehgt/results-${{ github.sha }}"
             }
           profiles: test_full,aws_tower
       - uses: actions/upload-artifact@v3

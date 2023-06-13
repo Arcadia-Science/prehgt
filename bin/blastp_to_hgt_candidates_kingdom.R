@@ -122,7 +122,7 @@ group_specificity_indices <- function(df, kingdoms) {
 # read BLAST results ---------------------------------------------------
 
 # read in BLAST results
-#blast_tsv <- "~/github/2023-rehgt/outputs/blast_diamond/Psilocybe_vs_clustered_nr_lineages.tsv"
+#blast_tsv <- "~/github/prehgt/outputs/blast_diamond/Psilocybe_vs_clustered_nr_lineages.tsv"
 blast <- read_and_filter_blast_results(blast_tsv)
 
 # set acceptor and donor groups -------------------------------------------

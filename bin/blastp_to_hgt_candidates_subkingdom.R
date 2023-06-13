@@ -13,8 +13,8 @@ gene_lst_out <- args[3]
 # read BLAST results ---------------------------------------------------
 
 # read in BLAST results
-#blast <- read_tsv("~/github/2023-rehgt/outputs/blast_diamond/Agrocybe_vs_clustered_nr_lineages.tsv", col_types = "ccccdddddddddddddddddccccccccc")
-# blast_tsv <- "~/github/2023-rehgt/outputs/blast_diamond/Psilocybe_vs_clustered_nr_lineages.tsv"
+#blast <- read_tsv("~/github/prehgt/outputs/blast_diamond/Agrocybe_vs_clustered_nr_lineages.tsv", col_types = "ccccdddddddddddddddddccccccccc")
+# blast_tsv <- "~/github/prehgt/outputs/blast_diamond/Psilocybe_vs_clustered_nr_lineages.tsv"
 blast <- read_and_filter_blast_results(blast_tsv)
 
 filter_cols <- c("superkingdom", "kingdom", "phylum", "class", "order", "family")

@@ -22,14 +22,14 @@ all_results_tsv       <- args[9]
 method_tally_tsv      <- args[10]
 
 # paths to test locally:
-# compositional_tsv <- "~/github/2023-rehgt/out_test/compositional/Bigelowiella_clusters.tsv"
-# blast_kingdom_tsv <- "~/github/2023-rehgt/out_test/blastp/Bigelowiella_blastp_kingdom_scores.tsv"
-# blast_skingdom_tsv <- "~/github/2023-rehgt/out_test/blastp/Bielowiella_blastp_subkingdom_scores.tsv"
-# genomes_csv <- "~/github/2023-rehgt/out_test/download/Bigelowiella_genomes.csv"
-# pangenome_cluster_tsv <- "~/github/2023-rehgt/out_test/build/Bigelowiella_cluster.tsv"
-# gff_tsv <- "~/github/2023-rehgt/out_test/combine/Bigelowiella_gff_info.tsv"
-# kofamscan_tsv <- "~/github/2023-rehgt/out_test/kofamscan/Bigelowiella_kofamscan.tsv"
-# hmmscan_tblout <- "~/github/2023-rehgt/out_test/hmmscan/Bigelowiella.tblout"
+# compositional_tsv <- "~/github/prehgt/out_test/compositional/Bigelowiella_clusters.tsv"
+# blast_kingdom_tsv <- "~/github/prehgt/out_test/blastp/Bigelowiella_blastp_kingdom_scores.tsv"
+# blast_skingdom_tsv <- "~/github/prehgt/out_test/blastp/Bielowiella_blastp_subkingdom_scores.tsv"
+# genomes_csv <- "~/github/prehgt/out_test/download/Bigelowiella_genomes.csv"
+# pangenome_cluster_tsv <- "~/github/prehgt/out_test/build/Bigelowiella_cluster.tsv"
+# gff_tsv <- "~/github/prehgt/out_test/combine/Bigelowiella_gff_info.tsv"
+# kofamscan_tsv <- "~/github/prehgt/out_test/kofamscan/Bigelowiella_kofamscan.tsv"
+# hmmscan_tblout <- "~/github/prehgt/out_test/hmmscan/Bigelowiella.tblout"
 
 # functions ---------------------------------------------------------------
 
@@ -162,7 +162,7 @@ return_blast_files_with_results <- function(files){
   return(blast_files_with_results)
 }
 
-#blast_kingdom_tsv <- "~/github/2023-rehgt/out_test/blastp/Bigelowiella_blastp_scores.tsv"
+#blast_kingdom_tsv <- "~/github/prehgt/out_test/blastp/Bigelowiella_blastp_scores.tsv"
 blast_kingdom <- return_blast_files_with_results(blast_kingdom_tsv) %>%
   set_names() %>%
   map_dfr(read_blast_hgt_candidates_kingdom, .id = "genus") %>%
