@@ -311,7 +311,7 @@ all_candidates <- all_candidates %>%
   select(-blast_contamination)
 
 # write outputs -----------------------------------------------------------
-View(all_candidates)
+
 write_tsv(all_candidates, all_results_tsv)
 
 method_tally <- all_candidates %>%
