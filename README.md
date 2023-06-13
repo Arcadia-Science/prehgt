@@ -39,12 +39,19 @@ The main output of the pipeline is a TSV file summarizing the
 
 Below we provide a description of each column output column.
 
+<summary> <b>Overview columns</b> </summary>
+
 - **genus**: the input genus for a given HGT candidate
 - **hgt_candidate**: HGT candidate gene sequence name. The name is derived from the original FASTA CDS from genomic file downloaded from NCBI and contains the chromosome name, gene number, and GenBank protein ID if it exists. This is also the BLAST query sequence ID.
 - **method**: the method used to infer the HGT candidate. Currently blast, raau (relative amino acid usage), or both
+<details>
+<summary> <b>Relative amino acid usage columns</b> </summary>
+
 - **RAAU_cluster**: the cluster that an HGT candidate was in. If multiple HGT candidates are reported for the RAAU method, the cluster might indicate if genes have a similar RAAU (which may indicate shared donor or evolutionary history).
+</details>
 <details>
 <summary> <b>BLAST columns</b> </summary>
+
 - **blast_algorithm_type**: the BLAST algorithm type used to infer the HGT candidate. One of eith kingdom or sub-kingdom.
 - **blast_HGT_score**: HGT score inferred from Alien Index. Also reports contamination liklihood. Since Alien index is only calculated for kingdom level transfers, the score will be NA for all sub-kingdom algorithm type results.
 - **blast_hgt_taxonomy_level**: the taxonomic level at which the HGT event was detected (kingdom, phylum, class, order, family)
@@ -77,6 +84,7 @@ Below we provide a description of each column output column.
 </details>
 <details>
 <summary> <b>Annotation columns</b> </summary>
+
 - **kofamscan_ko**: best KEGG ortholog identifier reported by KofamScan annotation
 - **kofamscan_threshold**: KofamScan HMM threshold; family-specific adaptive score calculated by KofamScan for each KO family.
 - **kofamscan_score**: KofamScan HMM score. We do not filter annotations that do not meet the threshold, as these may still be useful for sleuthing out potential functions of an HGT candidate. |
@@ -92,11 +100,13 @@ Below we provide a description of each column output column.
 </details>
 <details>
 <summary> <b>Pangenome columns</b> </summary>
+
 - **pangenome_num_genes_in_cluster**: total number of genes in the HGT candidate's cluster. Each HGT candidate is the representative sequence for its cluster.
 - **pangenome_size**: total number of genomes in the genus-level pangenome.
 </details>
 <details>
 <summary> <b>GFF columns</b> </summary>
+
 - **gff_seqid**: sequence ID in the GFF file
 - **gff_source**: source in the GFF file
 - **gff_feature**: feature annotation (CDS) in the GFF file
