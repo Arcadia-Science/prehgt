@@ -308,7 +308,8 @@ all_candidates <- all_candidates %>%
          blast_HGT_score = ifelse(blast_alien_index < 15, "1 possible HGT", blast_HGT_score),
          # relabel potential contaminants
          blast_HGT_score = ifelse(blast_contamination == "0 likely contamination", "0 likely contamination", blast_HGT_score)) %>%
-  select(-blast_contamination)
+  select(-blast_contamination) %>%
+  relocate(blast_HGT_score, .after = blast_algorithm_type)
 
 # write outputs -----------------------------------------------------------
 
