@@ -1,43 +1,123 @@
-# prehgt: generating a *pre*liminary list of horizontal gene transfer (_HGT_) candidates using compositional and phylogenetic implicit approaches
+# preHGT: generating a *pre*liminary horizontal gene transfer (_HGT_) candidates using compositional and phylogenetic implicit approaches
 
 [![Snakemake](https://img.shields.io/badge/snakemake--green)](https://snakemake.readthedocs.io/en/stable/)
 [![Nextflow](https://img.shields.io/badge/nextflow%20DSL2-%E2%89%A522.10.1-23aa62.svg)](https://www.nextflow.io/)
 [![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
 [![Launch on Nextflow Tower](https://img.shields.io/badge/Launch%20%F0%9F%9A%80-Nextflow%20Tower-%234256e7)](https://tower.nf/launch?pipeline=https://github.com/Arcadia-Science/prehgt)
 
-preHGT a pipeline for lightweight, automated, and scalable approach for pre-screening genomes across the tree of life for horizontal gene transfer (HGT).
+preHGT a pipeline quickly pre-screens genomes across the tree of life for horizontal gene transfer (HGT).
 
 The preHGT pipeline wraps existing parametric and implicit phylogenetic methods for HGT detection and reports multiple metrics about input genome contamination.
 It quickly produces a "good-enough" candidate list of genes that researchers can further investigate with more stringent HGT detection methods, different data modalities, or wet lab experimentation.
 
-TODO: add pipeline overview DAG/figure.
+For more scientific details about the preHGT, see [this pub](TODO: add doi link).
+
+We're not picky about capitalization; choose whatever feels right to you (prehgt, preHGT) and feel free to capitalizate at the beginning of a sentence if it brings you joy (PreHGT).
+
+## Overview of the pipeline
 
 The preHGT pipeline combines compositional scans, pangenome inference, and BLAST-based searches.
 For the interpretation of the BLAST results, we took advantage of a rich literature of BLAST-based HGT predictor indices and re-implemented many with the goal of providing the most information possible from one BLAST run with a single tool.
 To reduce overall run times, the pipeline employs clustering heuristics, including construction of a genus-level pangenome to reduce query size and searches against a clustered database to reduce database size.
 To reduce false positives, we included multiple screens for contamination based on similarity to database matches, position of gene in the contiguous sequence, and homolog presence in closely related genomes.
 
-We're not picky about capitalization; choose whatever feels right to you (prehgt, preHGT) and feel free to capitalizate at the beginning of a sentence if it brings you joy (PreHGT).
-
-For more scientific details about the preHGT, see [this pub](TODO: add doi link).
-
-## Conceptual overview of the pipeline
+TODO: add pipeline overview DAG/figure.
 
 ## Quick Start
 
 The pipeline is implemented as either a Snakemake or a Nextflow workflow, with environment management with conda.
 
-### Nextflow
+### Installing conda
 
-### Snakemake
+Software and environment management is performed with conda, regardless of if you run the pipeline with snakemake or nextflow.
+You can find operating system-specific instructions for installing miniconda [here](https://docs.conda.io/en/latest/miniconda.html) and for installing mamba [here](https://mamba.readthedocs.io/en/latest/).
+
+### Obtaining databases
+
+If you choose to run the workflow with Nextflow, you will provide the databases as command line parameters at run time.
+If you choose to run the workflow with Snakemake, you will need the databases to be located in specific folders.
+The download code below reflects the relative paths of the databases where the snakemake workflow will look for them in the `prehgt` workflow directory (see [Running the pipeline with Snakemake](###running-the-pipeline-with-snakemake) below for instructions on how to obtain the directory locally).
+
+```
+curl -JLo
+curl -JLo
+curl -JLo
+```
+
+### Input sample sheet
+
+The input sample sheet is the same for both workflows.
+It's a TSV file with the genus or genera you would like to run through the preHGT pipeline.
+An example is included [here](https://github.com/Arcadia-Science/test-datasets/blob/main/rehgt/bigelowiella_test.tsv) and reproduced below:
+
+```
+genus
+Bigelowiella
+Schizosaccharomyces
+```
+
+### Running the pipeline with Nextflow
+
+If you would like to run the pipeline with Nextflow, begin by installing Nextflow.
+
+```
+mamba env create -n prehgtnf nextflow=22.10.6
+conda activate prehgtnf
+```
+
+Then, you can test the workflow with a small data set using:
+
+```
+nextflow run Arcadia-Science/prehgt -profile test,conda --outdir <OUTDIR>
+```
+
+To run the full pipeline, including supplying paths to databases, run:
+
+```
+nextflow run Arcadia-Science/prehgt -profile conda --outdir <OUTDIR> --input input.tsv --blast_db path_to_blast_db --blast_db_tax path_to_blast_db_taxonomy_file --ko_list path_to_ko_list_file --ko_profiles path_to_ko_profiles_folder --hmm_db path_to_hmm_db
+```
+
+### Running the pipeline with Snakemake
+
+If you would like to run the pipeline with Snakemake, begin by installing Snakemake and other runtime dependencies.
+
+```
+mamba env create -n prehgt --file environment.yml
+conda activate prehgt
+```
+
+Next, clone this repository and `cd` into it:
+
+```
+git clone https://github.com/Arcadia-Science/prehgt.git
+cd prehgt
+```
+
+The input files for the snakemake workflow are not parameterized, so you need to make sure the input sample sheet and databases are in the correct location with the correct file names.
+We recap these below.
+Note, the KofamScan databases are downloaded by the pipeline itself, so no need to worry about those.
+
+```
+TO LIST OUT PATHS
+```
+
+To start the pipeline, run:
+
+```
+snakemake --use-conda -j 8 --rerun-incomplete
+```
+
+where:
+
+- `--use-conda` tells snakemake to manage software dependencies with conda.
+- `-j` tells snakemake the maximum number of threads to use at once.
+- `--rerun-incomplete` tells snakemake to check whether any files were interupted and to re-make them if so.
 
 ## Additional documentation
 
 ### Outputs
 
-The main output of the pipeline is a TSV file summarizing the
-
-Below we provide a description of each column output column.
+The main output is a TSV file summarizing the results of each part of the pipeline. Below we provide a description of each column output column.
 
 <summary> <b>Overview columns</b> </summary>
 
@@ -132,5 +212,7 @@ Below we provide a description of each column output column.
 </details>
 
 ### Full usage
+
+TBD
 
 ## Citations
