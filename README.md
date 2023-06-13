@@ -36,12 +36,22 @@ You can find operating system-specific instructions for installing miniconda [he
 
 If you choose to run the workflow with Nextflow, you will provide the databases as command line parameters at run time.
 If you choose to run the workflow with Snakemake, you will need the databases to be located in specific folders.
-The download code below reflects the relative paths of the databases where the snakemake workflow will look for them in the `prehgt` workflow directory (see [Running the pipeline with Snakemake](###running-the-pipeline-with-snakemake) below for instructions on how to obtain the directory locally).
+The download code below reflects the relative paths of the databases where the snakemake workflow will look for them in the `prehgt` workflow directory (see [Running the pipeline with Snakemake](#running-the-pipeline-with-snakemake) below for instructions on how to obtain the directory locally).
 
 ```
-curl -JLo
-curl -JLo
-curl -JLo
+mkdir -p inputs/
+curl -JLo inputs/nr_rep_seq.fasta.gz https://osf.io/gqxva/download # 59Gb BLASTp database
+curl -JLo inputs/nr_cluster_taxid_formatted_final.sqlite https://osf.io/5qj7e/download # 66Gb BLASTp taxonomy database
+curl -JLo inputs/hmms/all_hmms.hmm https://osf.io/f92qd/download # 3.2Gb HMM database
+```
+
+If you're using Nextflow, you will also need the KofamScan databases (these are automatically downloaded by the Snakemake pipeline)
+
+```
+mkdir -p inputs/kofamscandb
+curl -JLo inputs/kofamscandb/ko_list.gz ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip inputs/kofamscandb/ko_list.gz -C inputs/kofamscandb/
+
+curl -JLo inputs/kofamscandb/profiles.tar.gz ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz && tar xf inputs/kofamscandb/profiles.tar.gz -C inputs/kofamscandb/
 ```
 
 ### Input sample sheet
@@ -94,12 +104,8 @@ cd prehgt
 ```
 
 The input files for the snakemake workflow are not parameterized, so you need to make sure the input sample sheet and databases are in the correct location with the correct file names.
-We recap these below.
+See the [database download instructions](#obtaining-databases) above to make sure you placed your databases in the correct locations.
 Note, the KofamScan databases are downloaded by the pipeline itself, so no need to worry about those.
-
-```
-TO LIST OUT PATHS
-```
 
 To start the pipeline, run:
 
