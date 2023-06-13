@@ -1,12 +1,21 @@
 # prehgt: generating a *pre*liminary list of horizontal gene transfer (_HGT_) candidates using compositional and phylogenetic implicit approaches
 
-preHGT a pipeline for lightweight, automated, and scalable approach for pre-screening genomes for horizontal gene transfer (HGT).
+[![Snakemake](https://img.shields.io/badge/<snakemake>-<>-<green>)](https://snakemake.readthedocs.io/en/stable/)
+[![Nextflow](https://img.shields.io/badge/nextflow%20DSL2-%E2%89%A522.10.1-23aa62.svg)](https://www.nextflow.io/)
+[![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
+[![Launch on Nextflow Tower](https://img.shields.io/badge/Launch%20%F0%9F%9A%80-Nextflow%20Tower-%234256e7)](https://tower.nf/launch?pipeline=https://github.com/Arcadia-Science/prehgt)
+
+preHGT a pipeline for lightweight, automated, and scalable approach for pre-screening genomes across the tree of life for horizontal gene transfer (HGT).
+
+The preHGT pipeline wraps existing parametric and implicit phylogenetic methods for HGT detection and reports multiple metrics about input genome contamination. 
+It quickly produces a "good-enough" candidate list of genes that researchers can further investigate with more stringent HGT detection methods, different data modalities, or wet lab experimentation.
 
 TODO: add pipeline overview DAG/figure.
 
-Phylogenetic analysis involving species and gene tree construction are considered the gold standard methods for HGT detection, but these methods are computationally expensive and often don't scale to thousands of genomes.
-Given the barrier to scaling, users typically need to know what genomes to include prior to analysis.
-The goal of this pipeline is to identify candidate donor and acceptor genomes HGT events that can then be further investigated with tree-based approaches.
+The preHGT pipeline combines compositional scans, pangenome inference, and BLAST-based searches. 
+For the interpretation of the BLAST results, we took advantage of a rich literature of BLAST-based HGT predictor indices and re-implemented many with the goal of providing the most information possible from one BLAST run with a single tool.
+To reduce overall run times, the pipeline employs clustering heuristics, including construction of a genus-level pangenome to reduce query size and searches against a clustered database to reduce database size.
+To reduce false positives, we included multiple screens for contamination based on similarity to database matches, position of gene in the contiguous sequence, and homolog presence in closely related genomes.
 
 We're not picky about capitalization; choose whatever feels right to you (prehgt, preHGT) and feel free to capitalizate at the beginning of a sentence if it brings you joy (PreHGT).
 
@@ -14,13 +23,7 @@ For more scientific details about the preHGT, see [this pub](TODO: add doi link)
 
 ## Conceptual overview of the pipeline
 
-This pipeline screens genomes for horizontal gene transfer.
 
-The pipeline begins from a metadata table that records genome accessions and lineages.
-The coding domain sequences (`_CDS_from_genomic.fna.gz`) and gene annotation files (`_gff.gz`) are downloaded and then combined (0.9 percent identity threshold) into a genus-level pseudo-pangenome (the clustering is very fast, but doesn't deal with ortholog/paralog problems -- the goal of this approach is not to identify a true pangenome, but to reduce the number of genes that are screened).
-Each gene in the pangenome is then screened using composition metrics (codon usage, amino acid usage, etc.).
-The results of the composition screen are then parsed to identify HGT candidates (TBD) and to remove likely contaminants (TBD).
-The remaining HGT candidates are then BLASTED (DIAMOND) against the NCBI clustered non-redundant database and the results are parsed to identify genes with discrepant lineage matches (exact approach TBD).
 
 ## Quick Start
 
