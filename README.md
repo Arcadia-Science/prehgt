@@ -44,7 +44,7 @@ Below we provide a description of each column output column.
 - **method**: the method used to infer the HGT candidate. Currently blast, raau (relative amino acid usage), or both
 - **RAAU_cluster**: the cluster that an HGT candidate was in. If multiple HGT candidates are reported for the RAAU method, the cluster might indicate if genes have a similar RAAU (which may indicate shared donor or evolutionary history).
 <details>
-<summary> **BLAST columns** </summary>
+<summary> <b>BLAST columns</b> </summary>
 - **blast_algorithm_type**: the BLAST algorithm type used to infer the HGT candidate. One of eith kingdom or sub-kingdom.
 - **blast_HGT_score**: HGT score inferred from Alien Index. Also reports contamination liklihood. Since Alien index is only calculated for kingdom level transfers, the score will be NA for all sub-kingdom algorithm type results.
 - **blast_hgt_taxonomy_level**: the taxonomic level at which the HGT event was detected (kingdom, phylum, class, order, family)
@@ -74,9 +74,9 @@ Below we provide a description of each column output column.
 - **blast_transfer_index**: transfer index, calculated from bitscore ratios, taxonomic distances, and rank and total number of BLAST hits. Modified from the HGT-finder software.
 - **blast_transfer_index_p_value**: p value for Transfer index
 - **blast_transfer_index_adjusted_p_value**: FDR (p < 0.01) for transfer index p value
-<\details>
+</details>
 <details>
-<summary> **Annotation columns** </summary>
+<summary> <b>Annotation columns</b> </summary>
 - **kofamscan_ko**: best KEGG ortholog identifier reported by KofamScan annotation
 - **kofamscan_threshold**: KofamScan HMM threshold; family-specific adaptive score calculated by KofamScan for each KO family.
 - **kofamscan_score**: KofamScan HMM score. We do not filter annotations that do not meet the threshold, as these may still be useful for sleuthing out potential functions of an HGT candidate. |
@@ -91,12 +91,12 @@ Below we provide a description of each column output column.
 - **hmmscan_best_domain_score**: best domain score for hmmscan hit
 </details>
 <details>
-<summary> **Pangenome columns** </summary>
+<summary> <b>Pangenome columns</b> </summary>
 - **pangenome_num_genes_in_cluster**: total number of genes in the HGT candidate's cluster. Each HGT candidate is the representative sequence for its cluster.
 - **pangenome_size**: total number of genomes in the genus-level pangenome.
 </details>
 <details>
-<summary> **GFF columns** </summary>
+<summary> <b>GFF columns</b> </summary>
 - **gff_seqid**: sequence ID in the GFF file
 - **gff_source**: source in the GFF file
 - **gff_feature**: feature annotation (CDS) in the GFF file
