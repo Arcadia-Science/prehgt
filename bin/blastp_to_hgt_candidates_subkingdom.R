@@ -1,20 +1,21 @@
 #!/usr/bin/env Rscript
 library(tidyverse)
-source("bin/functions.R")
+source("https://raw.githubusercontent.com/Arcadia-Science/2023-rehgt/ter/subkingdom/bin/functions.R")
 
 # command line args -------------------------------------------------------
 
 # read from command line arguments and set global variables
 args <- commandArgs(trailingOnly = TRUE)
 blast_tsv <- args[1]
-blast_hgt_out <- args[2]
-gene_lst_out <- args[3]
+padj_threshold <- args[2]
+blast_hgt_out <- args[3]
+gene_lst_out <- args[4]
 
 # read BLAST results ---------------------------------------------------
 
 # read in BLAST results
-#blast <- read_tsv("~/github/2023-rehgt/outputs/blast_diamond/Agrocybe_vs_clustered_nr_lineages.tsv", col_types = "ccccdddddddddddddddddccccccccc")
-# blast_tsv <- "~/github/2023-rehgt/outputs/blast_diamond/Psilocybe_vs_clustered_nr_lineages.tsv"
+#padj_threshold <- 1
+#blast_tsv <- "~/github/2023-rehgt/out_test/blastp/Bigelowiella_vs_clustered_nr_lineages.tsv"
 blast <- read_and_filter_blast_results(blast_tsv)
 
 filter_cols <- c("superkingdom", "kingdom", "phylum", "class", "order", "family")
@@ -145,7 +146,7 @@ hgtfinder <- function(df, similarity_ratio_threshold, qlineage){
   return(df)
 }
 
-run_hgtfinder <- function(df, filter_pvalues = TRUE) {
+run_hgtfinder <- function(df, filter_pvalues = NULL) {
   results_all <- data.frame()
   for(threshold in c(0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)){
     for(taxlevel in c("kingdom", "phylum", "class", "order", "family")){
@@ -159,9 +160,9 @@ run_hgtfinder <- function(df, filter_pvalues = TRUE) {
   }
   
   # filter pvalues
-  if(filter_pvalues == TRUE){
+  if(length(filter_pvalues) > 0){
     results_all <- results_all %>%
-      filter(adjusted_p_value <= 0.01)
+      filter(adjusted_p_value <= filter_pvalues)
   }
   
   return(results_all)
@@ -186,7 +187,7 @@ report_lineage_at_hgt_taxonomy_level <- function(lineage, taxonomy_level){
 
 # run hgtfinder algorithms ------------------------------------------------
 
-results <- run_hgtfinder(df)
+results <- run_hgtfinder(df, filter_pvalues = padj_threshold)
 
 # format results and write TSV --------------------------------------------
 
@@ -272,7 +273,7 @@ acceptor_information <- left_join(acceptor_top_stats, acceptor_num_hits) %>%
 # get donor number of hits ------------------------------------------------
 
 donor_num_hits <- blast_tmp %>%
-  left_join(results_best_tax_formatted) %>%
+  left_join(results_best_tax_formatted1) %>%
   filter(lineage_at_hgt_taxonomy_level == donor_lineage_at_hgt_taxonomy_level) %>%
   group_by(qseqid, donor_lineage_at_hgt_taxonomy_level) %>%
   tally() %>%
@@ -302,4 +303,4 @@ results_best_tax_formatted <- results_best_tax_formatted1 %>%
          #acceptor_sum_bitscore_per_group_01, donor_sum_bitscore_per_group_01, ahs_01_index)
 
 write_tsv(results_best_tax_formatted, blast_hgt_out)
-write_tsv(results_best_tax_formatted %>% select(qseqid) %>% pull, gene_lst_out)
+write_tsv(results_best_tax_formatted[ , 1], gene_lst_out, col_names = FALSE)
