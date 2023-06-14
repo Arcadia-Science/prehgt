@@ -11,7 +11,7 @@ args <- commandArgs(trailingOnly = TRUE)
 # inputs:
 compositional_tsv     <- args[1]
 blast_kingdom_tsv     <- args[2]
-blast_skingdom_tsv    <- args[3]
+blast_subkingdom_tsv    <- args[3]
 genomes_csv           <- args[4]
 pangenome_cluster_tsv <- args[5]
 gff_tsv               <- args[6]
@@ -24,7 +24,7 @@ method_tally_tsv      <- args[10]
 # paths to test locally:
 # compositional_tsv <- "~/github/2023-rehgt/out_test/compositional/Bigelowiella_clusters.tsv"
 # blast_kingdom_tsv <- "~/github/2023-rehgt/out_test/blastp/Bigelowiella_blastp_kingdom_scores.tsv"
-# blast_skingdom_tsv <- "~/github/2023-rehgt/out_test/blastp/Bielowiella_blastp_subkingdom_scores.tsv"
+# blast_subkingdom_tsv <- "~/github/2023-rehgt/out_test/blastp/Bielowiella_blastp_subkingdom_scores.tsv"
 # genomes_csv <- "~/github/2023-rehgt/out_test/download/Bigelowiella_genomes.csv"
 # pangenome_cluster_tsv <- "~/github/2023-rehgt/out_test/build/Bigelowiella_cluster.tsv"
 # gff_tsv <- "~/github/2023-rehgt/out_test/combine/Bigelowiella_gff_info.tsv"
