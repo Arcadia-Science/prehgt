@@ -77,6 +77,10 @@ To run the full pipeline, including supplying paths to databases, run:
 nextflow run Arcadia-Science/prehgt -profile conda --outdir <OUTDIR> --input input.tsv --blast_db path_to_blast_db --blast_db_tax path_to_blast_db_taxonomy_file --ko_list path_to_ko_list_file --ko_profiles path_to_ko_profiles_folder --hmm_db path_to_hmm_db
 ```
 
+### Running the pipeline with [Nextflow Tower](https://cloud.tower.nf/)
+
+[![Launch on Nextflow Tower](https://img.shields.io/badge/Launch%20%F0%9F%9A%80-Nextflow%20Tower-%234256e7)](https://tower.nf/launch?pipeline=https://github.com/Arcadia-Science/2023-rehgt)
+
 ### Running the pipeline with Snakemake
 
 If you would like to run the pipeline with Snakemake, begin by installing Snakemake and other runtime dependencies.
@@ -118,7 +122,7 @@ For the interpretation of the BLAST results, we took advantage of a rich literat
 To reduce overall run times, the pipeline employs clustering heuristics, including construction of a genus-level pangenome to reduce query size and searches against a clustered database to reduce database size.
 To reduce false positives, we included multiple screens for contamination based on similarity to database matches, position of gene in the contiguous sequence, and homolog presence in closely related genomes.
 
-TODO: add pipeline overview DAG/figure.
+Below, we provide an overview of what each step of the pipeline does.
 
 1. **Retrieving gene sequences and annotation files.** The pipeline begins with the user providing a genus or genera of interest in a TSV file. The pipeline then scans GenBank and RefSeq for matching genomes and downloads relevant files. When a genome is available in both GenBank and RefSeq, only the RefSeq version is retained. This step also parses the input files in preparation for future steps.
    - **[ncbi-genome-download](https://github.com/kblin/ncbi-genome-download):** Loops through GenBank and RefSeq to find and download all genomes with gene models (`*_cds_from_genomic.fna.gz`) and genome annotation files (`*_genomic.gff.gz`).
@@ -147,11 +151,15 @@ TODO: add pipeline overview DAG/figure.
    - **[combine_and_parse_gff_per_genus.R](./bin/combine_and_parse_gff_per_genus.R)**: All downloaded `*_genomic.gff.gz` are combined and parsed to pull out annotation information for each coding domain sequence.
    - **[KofamScan](https://github.com/takaram/kofam_scan)**: KofamScan uses hidden markov models (HMMs) to perform KEGG ortholog annotation.
    - **[hmmscan](http://hmmer.org/)**: We [built](./make_hmm_db.snakefile) a [custom HMM database](https://osf.io/trgpc/) to scan for annotations of interest using HMMER3 `hmmscan`. The HMM database currently contains VOGs from [VOGDB](https://vogdb.org/) and [biosynthetic genes](./inputs/hmms/hmm_urls.csv), and can be extended in the future to meet user annotation interests.
-5. **Reporting.** The last step combines all information that the pipeline has produced and outputs the results in a TSV file using the script [combine_results.R](./bin/combine_results.R). The results include the GenBank protein identifier for the HGT candidate, BLAST and relative amino acid usage scores, pangenome information, gene and ortholog annotations, and contextualizing information about the gene such as position in the contiguous sequence.
+5. **Reporting.** The last step combines all information that the pipeline has produced and outputs the results in a TSV file using the script [combine_results.R](./bin/combine_results.R). The results include the GenBank protein identifier for the HGT candidate, BLAST and relative amino acid usage scores, pangenome information, gene and ortholog annotations, and contextualizing information about the gene such as position in the contiguous sequence. This script also reports whether an HGT candidate is actually contamination by integrating information about the number of times the gene is observed in the pangenome, the similarity of the gene to other hits in the database, and the length of the contiguous sequence that the gene is located on in the genome.
+
+TODO: add pipeline overview DAG/figure.
 
 ### Outputs
 
 The main output is a TSV file summarizing the results of each part of the pipeline. Below we provide a description of each column output column.
+
+#### TSV summary file
 
 <summary> <b>Overview columns</b> </summary>
 
@@ -245,10 +253,9 @@ The main output is a TSV file summarizing the results of each part of the pipeli
 - **gff_frame_tally**: total number of frames in which a CDS was observed in the original GFF file. One information for the first frame is retained to reduce reporting redundancy.
 </details>
 
-TODO describe other outputs in intermediate folders (BLAST tables, pangenome clusters, etc.)
+#### Other outputs
 
-### Full usage
-
-TBD
+The pipeline also produces a number of intermediate files, including the original `*_cds_from_genomic.fna.gz` files, full BLAST results, the HGT candidate gene sequences, and the pangenome gene cluster membership manifest.
+The exact path of these files will depend on whether the pipeline is executed in Snakemake or Nextflow.
 
 ## Citations
