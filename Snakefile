@@ -219,7 +219,7 @@ rule blast_to_hgt_candidates_subkingdom:
     conda: "envs/tidyverse.yml"
     benchmark: "benchmarks/blast_to_hgt_candidates_subkingdom/{genus}.tsv"
     shell:'''
-    bin/blastp_to_hgt_candidates_subkingdom.R {input.tsv} {output.tsv} {output.gene_lst}
+    bin/blastp_to_hgt_candidates_subkingdom.R {input.tsv} 0.01 {output.tsv} {output.gene_lst}
     '''
 
 ###################################################
