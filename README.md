@@ -5,7 +5,7 @@
 [![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
 [![Launch on Nextflow Tower](https://img.shields.io/badge/Launch%20%F0%9F%9A%80-Nextflow%20Tower-%234256e7)](https://tower.nf/launch?pipeline=https://github.com/Arcadia-Science/prehgt)
 
-preHGT a pipeline quickly pre-screens genomes across the tree of life for horizontal gene transfer (HGT).
+preHGT is a pipeline that quickly pre-screens genomes across the tree of life for horizontal gene transfer (HGT).
 
 The preHGT pipeline wraps existing parametric and implicit phylogenetic methods for HGT detection and reports multiple metrics about input genome contamination.
 It quickly produces a "good-enough" candidate list of genes that researchers can further investigate with more stringent HGT detection methods, different data modalities, or wet lab experimentation.
@@ -13,16 +13,6 @@ It quickly produces a "good-enough" candidate list of genes that researchers can
 For more scientific details about the preHGT, see [this pub](TODO: add doi link).
 
 We're not picky about capitalization; choose whatever feels right to you (prehgt, preHGT) and feel free to capitalizate at the beginning of a sentence if it brings you joy (PreHGT).
-
-## Overview of the pipeline
-
-The preHGT pipeline combines compositional scans, pangenome inference, and BLAST-based searches.
-For the interpretation of the BLAST results, we took advantage of a rich literature of BLAST-based HGT predictor indices and re-implemented many with the goal of providing the most information possible from one BLAST run with a single tool.
-To reduce overall run times, the pipeline employs clustering heuristics, including construction of a genus-level pangenome to reduce query size and searches against a clustered database to reduce database size.
-To reduce false positives, we included multiple screens for contamination based on similarity to database matches, position of gene in the contiguous sequence, and homolog presence in closely related genomes.
-
-TODO: add pipeline overview DAG/figure.
-TODO: add tools/algorithms that are used
 
 ## Quick Start
 
@@ -120,6 +110,45 @@ where:
 - `--rerun-incomplete` tells snakemake to check whether any files were interupted and to re-make them if so.
 
 ## Additional documentation
+
+### Overview of the pipeline
+
+The preHGT pipeline combines compositional scans, pangenome inference, and BLAST-based searches.
+For the interpretation of the BLAST results, we took advantage of a rich literature of BLAST-based HGT predictor indices and re-implemented many with the goal of providing the most information possible from one BLAST run with a single tool.
+To reduce overall run times, the pipeline employs clustering heuristics, including construction of a genus-level pangenome to reduce query size and searches against a clustered database to reduce database size.
+To reduce false positives, we included multiple screens for contamination based on similarity to database matches, position of gene in the contiguous sequence, and homolog presence in closely related genomes.
+
+TODO: add pipeline overview DAG/figure.
+TODO: add tools/algorithms that are used
+
+1. **Retrieving gene sequences and annotation files.** The pipeline begins with the user providing a genus or genera of interest in a TSV file. The pipeline then scans GenBank and RefSeq for matching genomes and downloads relevant files. When a genome is available in both GenBank and RefSeq, only the RefSeq version is retained. This step also parses the input files in preparation for future steps.
+   - **[ncbi-genome-download](https://github.com/kblin/ncbi-genome-download):** Loops through GenBank and RefSeq to find and download all genomes with gene models (`*_cds_from_genomic.fna.gz`) and genome annotation files (`_genomic.gff.gz`).
+   - **[delete_gca_files.sh](./bin/delete_gca_files.sh)**: If a genome is in both GenBank and RefSeq, this script deletes the GenBank version and only keep the RefSeq version.
+   - **file parsing**: All `*_cds_from_genomic.fna.gz` files are combined into a single file, and a CSV file that records the total number of downloaded genomes per genus is generated.
+2. **Building a pangenome.** For each genus, the pipeline then combines genes into a pseudopangenome, which reduces the number of genes that are investigated and provides metadata about the gene.
+   - **[`mmseqs easy-cluster`](https://github.com/soedinglab/MMseqs2)**: Nucleotide sequences are clustered at 90% length and identity.
+   - **EMBOSS `transeq`**: clustered nucleotide sequences are translated into amino acid sequences.
+3. **Detecting HGT candidates.** Using the genes in the pangenome, the pipeline uses two categories of approaches to identify HGT candidates.
+   - **Compositional scan.** The first approach uses relative amino acid usage to detect proteins with outlying composition.
+     - **EMBOSS `pepstats`**: Measures relative amino acid usage (RAAU) for each gene.
+     - **[compositional_scans_to_hgt_candidates.R](./bin/compositional_scans_to_hgt_candidates.R)**: Produces a list of genes that have outlying RAAU. Starts by parsing the `pepstats` results with the function `parse_pepstats_to_amino_acid_frequencies()`. Then, produces a distance matrix with the base R function `dist()` and hierarchically clusters the distance matrix with fastcluster’s `hclust()`. It detects outliers by cutting the resultant tree with `height/1.5` and retaining any cluster that contains fewer than 0.1% of the pangenome size.
+   - **BLASTp scan.** Uses BLASTp to identify proteins with distant homologs.
+     - **DIAMOND `blastp`**: All genes in the pseudopangenome are BLASTed against a [clustered version of NCBI’s nr database (90% length, 90% identity)](https://github.com/Arcadia-Science/2023-nr-clustering). The clustered database makes the BLASTp step faster and ensures results contain a variety of taxonomic lineages in cases where distant homology exists.
+     - **[blastp_add_taxonomy_info.R](./bin/blastp_add_taxonomy_info.R)**: Adds lineage information to the BLASTp search using dplyr, dbplyr, and RSQLite.
+     - **[blastp_to_hgt_candidates_kingdom.R](./bin/blastp_to_hgt_candidates_kingdom.R)**:
+       - Alien index:
+       - HGT index:
+       - Donor distribution index:
+       - (Normalized) entropy:
+       - Gini coefficient:
+       - Aggregate hit score:
+     - **[blastp_to_hgt_candidates_subkingdom.R](./bin/blastp_to_hgt_candidates_subkingdom.R)**:
+       - Transfer index:
+4. **Annotation.** We then annotate the HGT candidates.
+   - **[combine_and_parse_gff_per_genus.R](./bin/combine_and_parse_gff_per_genus.R)**: All downloaded `*_genomic.gff.gz` are combined and parsed to pull out annotation information for each coding domain sequence.
+   - **[KofamScan](https://github.com/takaram/kofam_scan)**: KofamScan uses hidden markov models (HMMs) to perform KEGG ortholog annotation.
+   - [**hmmscan**](http://hmmer.org/): We [built](./make_hmm_db.snakefile) a [custom HMM database](https://osf.io/trgpc/) to scan for annotations of interest using HMMER3 `hmmscan`. The HMM database currently contains VOGs from [VOGDB](https://vogdb.org/) and [biosynthetic genes](./inputs/hmms/hmm_urls.csv), and can be extended in the future to meet user annotation interests.
+5. **Reporting.** The last step combines all information that the pipeline has produced and outputs the results in a TSV file using the script [combine_results.R](./bin/combine_results.R). The results include the GenBank protein identifier for the HGT candidate, BLAST and relative amino acid usage scores, pangenome information, gene and ortholog annotations, and contextualizing information about the gene such as position in the contiguous sequence.
 
 ### Outputs
 
