@@ -22,6 +22,7 @@ To reduce overall run times, the pipeline employs clustering heuristics, includi
 To reduce false positives, we included multiple screens for contamination based on similarity to database matches, position of gene in the contiguous sequence, and homolog presence in closely related genomes.
 
 TODO: add pipeline overview DAG/figure.
+TODO: add tools/algorithms that are used
 
 ## Quick Start
 
@@ -50,7 +51,6 @@ If you're using Nextflow, you will also need the KofamScan databases (these are 
 ```
 mkdir -p inputs/kofamscandb
 curl -JLo inputs/kofamscandb/ko_list.gz ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip inputs/kofamscandb/ko_list.gz -C inputs/kofamscandb/
-
 curl -JLo inputs/kofamscandb/profiles.tar.gz ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz && tar xf inputs/kofamscandb/profiles.tar.gz -C inputs/kofamscandb/
 ```
 
@@ -216,6 +216,8 @@ The main output is a TSV file summarizing the results of each part of the pipeli
 - **gff_transl_table**: GFF translation table
 - **gff_frame_tally**: total number of frames in which a CDS was observed in the original GFF file. One information for the first frame is retained to reduce reporting redundancy.
 </details>
+
+TODO describe other outputs in intermediate folders (BLAST tables, pangenome clusters, etc.)
 
 ### Full usage
 
