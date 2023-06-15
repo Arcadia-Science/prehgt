@@ -254,3 +254,7 @@ The pipeline also produces a number of intermediate files, including the origina
 The exact path of these files will depend on whether the pipeline is executed in Snakemake or Nextflow.
 
 ## Citations
+
+If you use prehgt for your analysis, please cite it using the following DOI:
+
+An extensive list of references for the tools used by the pipeline can be found in the [CITATIONS](./CITATIONS.md) file.
