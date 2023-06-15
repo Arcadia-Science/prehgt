@@ -253,6 +253,12 @@ The main output is a TSV file summarizing the results of each part of the pipeli
 The pipeline also produces a number of intermediate files, including the original `*_cds_from_genomic.fna.gz` files, full BLAST results, the HGT candidate gene sequences, and the pangenome gene cluster membership manifest.
 The exact path of these files will depend on whether the pipeline is executed in Snakemake or Nextflow.
 
+## Contributing
+
+If you have suggestions or encounter any problems with prehgt, please [file and issue](https://github.com/Arcadia-Science/prehgt/issues).
+You are also welcome to submit a pull request if you feel like diving into the code.
+See [this guide](https://github.com/Arcadia-Science/arcadia-software-handbook/blob/main/guides-and-standards/guide-credit-for-contributions.md) to see how we recognize feedback and contributions on our code.
+
 ## Citations
 
 If you use prehgt for your analysis, please cite it using the following DOI:
