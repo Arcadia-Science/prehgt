@@ -9,6 +9,7 @@ process blastp_to_hgt_candidates_subkingdom {
 
     input:
     tuple val(genus), path(blast_lineages_tsv)
+    val(padj_threshold)
 
     output:
     tuple val(genus), path("*_blastp_subkingdom_scores.tsv")  , emit: blast_scores
@@ -17,6 +18,6 @@ process blastp_to_hgt_candidates_subkingdom {
     script:
     def prefix = task.ext.prefix ?: "${genus}"
     """
-    blastp_to_hgt_candidates_subkingdom.R ${blast_lineages_tsv} ${prefix}_blastp_subkingdom_scores.tsv ${prefix}_blastp_subkingdom_gene_lst.txt
+    blastp_to_hgt_candidates_subkingdom.R ${blast_lineages_tsv} ${padj_threshold} ${prefix}_blastp_subkingdom_scores.tsv ${prefix}_blastp_subkingdom_gene_lst.txt
     """
 }

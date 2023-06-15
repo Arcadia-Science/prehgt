@@ -11,7 +11,7 @@ args <- commandArgs(trailingOnly = TRUE)
 # inputs:
 compositional_tsv     <- args[1]
 blast_kingdom_tsv     <- args[2]
-blast_skingdom_tsv    <- args[3]
+blast_subkingdom_tsv    <- args[3]
 genomes_csv           <- args[4]
 pangenome_cluster_tsv <- args[5]
 gff_tsv               <- args[6]
@@ -24,7 +24,7 @@ method_tally_tsv      <- args[10]
 # paths to test locally:
 # compositional_tsv <- "~/github/prehgt/out_test/compositional/Bigelowiella_clusters.tsv"
 # blast_kingdom_tsv <- "~/github/prehgt/out_test/blastp/Bigelowiella_blastp_kingdom_scores.tsv"
-# blast_skingdom_tsv <- "~/github/prehgt/out_test/blastp/Bielowiella_blastp_subkingdom_scores.tsv"
+# blast_subkingdom_tsv <- "~/github/prehgt/out_test/blastp/Bielowiella_blastp_subkingdom_scores.tsv"
 # genomes_csv <- "~/github/prehgt/out_test/download/Bigelowiella_genomes.csv"
 # pangenome_cluster_tsv <- "~/github/prehgt/out_test/build/Bigelowiella_cluster.tsv"
 # gff_tsv <- "~/github/prehgt/out_test/combine/Bigelowiella_gff_info.tsv"
@@ -308,10 +308,11 @@ all_candidates <- all_candidates %>%
          blast_HGT_score = ifelse(blast_alien_index < 15, "1 possible HGT", blast_HGT_score),
          # relabel potential contaminants
          blast_HGT_score = ifelse(blast_contamination == "0 likely contamination", "0 likely contamination", blast_HGT_score)) %>%
-  select(-blast_contamination)
+  select(-blast_contamination) %>%
+  relocate(blast_HGT_score, .after = blast_algorithm_type)
 
 # write outputs -----------------------------------------------------------
-View(all_candidates)
+
 write_tsv(all_candidates, all_results_tsv)
 
 method_tally <- all_candidates %>%
