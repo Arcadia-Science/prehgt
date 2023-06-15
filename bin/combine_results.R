@@ -10,19 +10,21 @@ library(janitor)
 args <- commandArgs(trailingOnly = TRUE)
 # inputs:
 compositional_tsv     <- args[1]
-blast_tsv             <- args[2]
-genomes_csv           <- args[3]
-pangenome_cluster_tsv <- args[4]
-gff_tsv               <- args[5]
-kofamscan_tsv         <- args[6]
-hmmscan_tblout        <- args[7]
+blast_kingdom_tsv     <- args[2]
+blast_subkingdom_tsv    <- args[3]
+genomes_csv           <- args[4]
+pangenome_cluster_tsv <- args[5]
+gff_tsv               <- args[6]
+kofamscan_tsv         <- args[7]
+hmmscan_tblout        <- args[8]
 # outputs:
-all_results_tsv       <- args[8]
-method_tally_tsv      <- args[9]
+all_results_tsv       <- args[9]
+method_tally_tsv      <- args[10]
 
 # paths to test locally:
 # compositional_tsv <- "~/github/2023-rehgt/out_test/compositional/Bigelowiella_clusters.tsv"
-# blast_tsv <- "~/github/2023-rehgt/out_test/blastp/Bigelowiella_blastp_scores.tsv"
+# blast_kingdom_tsv <- "~/github/2023-rehgt/out_test/blastp/Bigelowiella_blastp_kingdom_scores.tsv"
+# blast_subkingdom_tsv <- "~/github/2023-rehgt/out_test/blastp/Bielowiella_blastp_subkingdom_scores.tsv"
 # genomes_csv <- "~/github/2023-rehgt/out_test/download/Bigelowiella_genomes.csv"
 # pangenome_cluster_tsv <- "~/github/2023-rehgt/out_test/build/Bigelowiella_cluster.tsv"
 # gff_tsv <- "~/github/2023-rehgt/out_test/combine/Bigelowiella_gff_info.tsv"
@@ -78,6 +80,63 @@ read_tblout <- function(file, type){
   return(table)
 }
 
+read_blast_hgt_candidates_kingdom <- function(file){
+  # col_types retrieved using spec_tsv() on test file
+  col_types <- cols(qseqid = col_character(),
+                    hgt_taxonomy_level = col_character(),
+                    acceptor_lineage_at_hgt_taxonomy_level = col_character(),
+                    acceptor_lca_level = col_character(),
+                    acceptor_best_nonself_match_id = col_character(),
+                    acceptor_max_pident = col_double(),
+                    acceptor_max_bitscore = col_double(),
+                    acceptor_min_evalue = col_double(),
+                    acceptor_num_matches_at_lineage = col_double(),
+                    donor_num_matches_at_lineage = col_double(),
+                    total_num_matches = col_double(),
+                    donor_lineage_at_hgt_taxonomy_level = col_character(),
+                    donor_best_match_full_lineage = col_character(),
+                    donor_best_match_id = col_character(),
+                    donor_best_match_pident = col_double(),
+                    donor_max_bitscore = col_double(),
+                    donor_min_evalue = col_double(),
+                    alien_index = col_double(),
+                    hgt_index = col_double(),
+                    donor_distribution_index = col_double(),
+                    entropy = col_double(),
+                    entropy_normalized = col_double(),
+                    gini = col_double(),
+                    acceptor_sum_bitscore_per_group_01 = col_double(),
+                    donor_sum_bitscore_per_group_01 = col_double(),
+                    ahs_01_index = col_double())
+  df <- read_tsv(file, col_types = col_types)
+  return(df)
+}
+
+read_blast_hgt_candidates_subkingdom <- function(file){
+  col_types <- cols(qseqid = col_character(),
+                    hgt_taxonomy_level = col_character(),
+                    acceptor_lineage_at_hgt_taxonomy_level = col_character(),
+                    acceptor_lca_level = col_character(),
+                    acceptor_best_nonself_match_id = col_character(),
+                    acceptor_max_pident = col_double(),
+                    acceptor_max_bitscore = col_double(),
+                    acceptor_min_evalue = col_double(),
+                    acceptor_num_matches_at_lineage = col_double(),
+                    total_num_matches = col_double(),
+                    donor_num_matches_at_lineage = col_double(),
+                    donor_lineage_at_hgt_taxonomy_level = col_character(),
+                    donor_best_match_full_lineage = col_character(),
+                    donor_best_match_id = col_character(),
+                    donor_best_match_pident = col_double(),
+                    donor_max_bitscore = col_double(),
+                    donor_min_evalue = col_double(),
+                    transfer_index = col_double(),
+                    transfer_index_p_value = col_double(),
+                    transfer_index_adjusted_p_value = col_double())
+  df <- read_tsv(file, col_types = col_types)
+  return(df)
+}
+
 # read in outputs from compositional scans --------------------------------
 
 compositional <- compositional_tsv %>%
@@ -91,22 +150,38 @@ compositional <- compositional_tsv %>%
 
 # check the number of rows for each input file
 # remove the files that only have 1 row, which means no BLAST results
-blast_files_with_results <- character()
-i <- 1
-for(file in blast_tsv){
-  if(length(count_fields(file, tokenizer_tsv())) > 1){
-    blast_files_with_results[i] <- file
-    i <- i + 1
+return_blast_files_with_results <- function(files){
+  blast_files_with_results <- character()
+  i <- 1
+  for(file in files){
+    if(length(count_fields(file, tokenizer_tsv())) > 1){
+      blast_files_with_results[i] <- file
+      i <- i + 1
+    }
   }
+  return(blast_files_with_results)
 }
 
-blast <- blast_files_with_results %>%
+#blast_kingdom_tsv <- "~/github/2023-rehgt/out_test/blastp/Bigelowiella_blastp_scores.tsv"
+blast_kingdom <- return_blast_files_with_results(blast_kingdom_tsv) %>%
   set_names() %>%
-  map_dfr(read_tsv, col_types = "ccddddcdddccdddcdddddddc", .id = "genus") %>%
+  map_dfr(read_blast_hgt_candidates_kingdom, .id = "genus") %>%
   rename_with( ~ paste0("blast_", .x)) %>%
   rename(hgt_candidate = blast_qseqid, genus = blast_genus) %>%
-  mutate(genus = gsub("_blastp_scores.tsv", "", basename(genus))) %>%
-  distinct()
+  mutate(genus = gsub("_blastp_kingdom_scores.tsv", "", basename(genus))) %>%
+  distinct() %>%
+  mutate(blast_algorithm_type = "kingdom", .after = hgt_candidate)
+
+blast_subkingdom <- return_blast_files_with_results(blast_subkingdom_tsv) %>%
+  set_names() %>%
+  map_dfr(read_blast_hgt_candidates_subkingdom, .id = "genus") %>%
+  rename_with( ~ paste0("blast_", .x)) %>%
+  rename(hgt_candidate = blast_qseqid, genus = blast_genus) %>%
+  mutate(genus = gsub("_blastp_subkingdom_scores.tsv", "", basename(genus))) %>%
+  distinct() %>%
+  mutate(blast_algorithm_type = "sub-kingdom", .after = hgt_candidate)
+
+blast <- bind_rows(blast_kingdom, blast_subkingdom)
 
 # read in and parse pangenome information ---------------------------------
 
@@ -226,14 +301,15 @@ label_contamination <- function(all_candidates_df){
 # label BLAST. Note that this logic almost exclusively relies on alien index. 
 # until we have run this many times and cross checked our results with tree-based approaches, I think this is good enough for now.
 # will require very good documentation to make this decision clear, and to educate around HGT index etc.
-all_candidates_tmp <- all_candidates %>%
+all_candidates <- all_candidates %>%
   mutate(blast_contamination = label_contamination(.)) %>%
   mutate(blast_HGT_score = ifelse(blast_alien_index >= 45, "3 highly likely HGT", NA),
          blast_HGT_score = ifelse(blast_alien_index < 45 & blast_alien_index > 15, "2 likely HGT", blast_HGT_score),
          blast_HGT_score = ifelse(blast_alien_index < 15, "1 possible HGT", blast_HGT_score),
          # relabel potential contaminants
          blast_HGT_score = ifelse(blast_contamination == "0 likely contamination", "0 likely contamination", blast_HGT_score)) %>%
-  select(-blast_contamination)
+  select(-blast_contamination) %>%
+  relocate(blast_HGT_score, .after = blast_algorithm_type)
 
 # write outputs -----------------------------------------------------------
 

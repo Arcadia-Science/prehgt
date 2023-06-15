@@ -14,11 +14,11 @@ while("Trametes" in GENUS):
 
 # explanation of wildcards:
 # genus (defined by GENUS): All of the genera that the pipeline will be executed on. This is defined from an input metadata file. 
-# accession (inferred from checkpoint_accessions_to_genus): While all genome accessions are recorded in the metadata file, this snakefile uses the class checkpoint_accessions_to_genus to create a mapping between accessions and the genera they occur in. 
+# accession (inferred from checkpoint_download_reference_genomes): Finds all accessions for genomes associated with a given genus.
 
 rule all:
     input: 
-        "outputs/hgt_candidates_final/results_fungi.tsv"
+        expand("outputs/hgt_candidates_final/{genus}_results.tsv", genus = GENUS)
         
 ###################################################
 ## download references & build pangenome
@@ -192,20 +192,34 @@ rule blast_add_taxonomy_info:
     bin/blastp_add_taxonomy_info.R {input.sqldb} {input.tsv} {output.tsv}
     '''
 
-rule blast_to_hgt_candidates:
+rule blast_to_hgt_candidates_kingdom:
     '''
     This script processes BLAST matches and their taxonomic lineages to identify HGT candidates using alien index, horizontal gene transfer index, donor distribution index, and acceptor lowest common acnestor calculations.
-    It scores all candidates and highlights where contamination is likely.
-    It writes the scores and other relevant information to a TSV file and outputs a list of candidate gene IDs.
+    It scores all candidates and writes the scores and other relevant information to a TSV file and outputs a list of candidate gene IDs.
     '''
     input: tsv="outputs/blast_diamond/{genus}_vs_clustered_nr_lineages.tsv"
     output: 
-        gene_lst="outputs/blast_hgt_candidates/{genus}_blastp_gene_lst.txt",
-        tsv="outputs/blast_hgt_candidates/{genus}_blastp_scores.tsv"
+        gene_lst="outputs/blast_hgt_candidates/{genus}_blastp_kingdom_gene_lst.txt",
+        tsv="outputs/blast_hgt_candidates/{genus}_blastp_kingdom_scores.tsv"
     conda: "envs/tidyverse.yml"
-    benchmark: "benchmarks/blast_to_hgt_candidates/{genus}.tsv"
+    benchmark: "benchmarks/blast_to_hgt_candidates_kingdom/{genus}.tsv"
     shell:'''
-    bin/blastp_to_hgt_candidates.R {input.tsv} {output.tsv} {output.gene_lst}
+    bin/blastp_to_hgt_candidates_kingdom.R {input.tsv} {output.tsv} {output.gene_lst}
+    '''
+
+rule blast_to_hgt_candidates_subkingdom:
+    '''
+    This script processes BLAST matches and their taxonomic lineages to identify HGT candidates using transfer index, a sub-kingdom identification algorithm
+    It scores all candidates and writes the scores and other relevant information to a TSV file and outputs a list of candidate gene IDs.
+    '''
+    input: tsv="outputs/blast_diamond/{genus}_vs_clustered_nr_lineages.tsv"
+    output: 
+        gene_lst="outputs/blast_hgt_candidates/{genus}_blastp_subkingdom_gene_lst.txt",
+        tsv="outputs/blast_hgt_candidates/{genus}_blastp_subkingdom_scores.tsv"
+    conda: "envs/tidyverse.yml"
+    benchmark: "benchmarks/blast_to_hgt_candidates_subkingdom/{genus}.tsv"
+    shell:'''
+    bin/blastp_to_hgt_candidates_subkingdom.R {input.tsv} 0.01 {output.tsv} {output.gene_lst}
     '''
 
 ###################################################
@@ -222,7 +236,8 @@ rule combine_hgt_candidates:
     * csvtk cut -f 1 -o {output}: cut the first column (the no de-duplicated hgt candidate names) and output it to a file.
     '''
     input: 
-       "outputs/blast_hgt_candidates/{genus}_gene_lst.txt",
+       "outputs/blast_hgt_candidates/{genus}_blastp_kingdom_gene_lst.txt",
+       "outputs/blast_hgt_candidates/{genus}_blastp_subkingdom_gene_lst.txt",
        "outputs/compositional_scans_hgt_candidates/{genus}_pepstats_gene_lst.txt"
     output: "outputs/hgt_candidates/{genus}_blastp_gene_lst.txt"
     conda: "envs/csvtk.yml"
@@ -312,19 +327,18 @@ rule combine_results:
     The results are joined either on the genus or on the HGT candidate gene name, derived from the pangenome FASTA file.
     '''
     input: 
-        compositional = expand("outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv", genus = GENUS),
-        blast = expand("outputs/blast_hgt_candidates/{genus}_blastp_scores.tsv", genus = GENUS),
-        genome_csv=expand("inputs/genbank/{genus}_genomes.csv", genus = GENUS),
-        pangenome_cluster = expand("outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv", genus = GENUS),
-        gff = expand("outputs/genus_pangenome_raw/{genus}_gff_info.tsv", genus = GENUS),
-        kofamscan = expand("outputs/hgt_candidates_annotation/kofamscan/{genus}_kofamscan.tsv", genus = GENUS),
-        hmmscan = expand("outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout", genus = GENUS),
+        compositional = "outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv",
+        blast_kingdom = "outputs/blast_hgt_candidates/{genus}_blastp_kingdom_scores.tsv",
+        blast_subkingdom = "outputs/blast_hgt_candidates/{genus}_blastp_subkingdom_scores.tsv",
+        genome_csv = "inputs/genbank/{genus}_genomes.csv",
+        pangenome_cluster = "outputs/genus_pangenome_clustered/{genus}_cds_cluster.tsv",
+        gff = "outputs/genus_pangenome_raw/{genus}_gff_info.tsv",
+        kofamscan = "outputs/hgt_candidates_annotation/kofamscan/{genus}_kofamscan.tsv",
+        hmmscan = "outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout",
     output: 
-        #all_results = "outputs/hgt_candidates_final/results_venoms.tsv",
-        #method_tally = "outputs/hgt_candidates_final/method_tally_venoms.tsv"
-        all_results = "outputs/hgt_candidates_final/results_fungi.tsv",
-        method_tally = "outputs/hgt_candidates_final/method_tally_fungi.tsv"
+        all_results = "outputs/hgt_candidates_final/{genus}_results.tsv",
+        method_tally = "outputs/hgt_candidates_final/{genus}_method_tally.tsv"
     conda: "envs/tidyverse.yml"
     shell:'''
-    bin/combine_results.R {input.compositional} {input.blast} {input.genome_csv} {input.pangenome_cluster} {input.gff} {input.kofamscan} {input.hmmscan}
+    bin/combine_results.R {input.compositional} {input.blast_kingdom} {input.blast_subkingdom} {input.genome_csv} {input.pangenome_cluster} {input.gff} {input.kofamscan} {input.hmmscan}
     '''
