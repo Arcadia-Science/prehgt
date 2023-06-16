@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 library(tidyverse)
-source("https://raw.githubusercontent.com/Arcadia-Science/2023-rehgt/main/bin/functions.R")
+source("https://raw.githubusercontent.com/Arcadia-Science/prehgt/main/bin/functions.R")
 
 # command line args -------------------------------------------------------
 
@@ -15,7 +15,7 @@ gene_lst_out <- args[4]
 
 # read in BLAST results
 #padj_threshold <- 1
-#blast_tsv <- "~/github/2023-rehgt/out_test/blastp/Bigelowiella_vs_clustered_nr_lineages.tsv"
+#blast_tsv <- "~/github/prehgt/out_test/blastp/Bigelowiella_vs_clustered_nr_lineages.tsv"
 blast <- read_and_filter_blast_results(blast_tsv)
 
 filter_cols <- c("superkingdom", "kingdom", "phylum", "class", "order", "family")
