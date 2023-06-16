@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 library(tidyverse)
-source("bin/functions.R")
+source("https://raw.githubusercontent.com/Arcadia-Science/prehgt/main/bin/functions.R")
 
 # command line args -------------------------------------------------------
 

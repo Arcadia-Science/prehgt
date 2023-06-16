@@ -1,5 +1,5 @@
 //
-// This file holds several functions specific to the main.nf workflow in the taylorreiter/2023-rehgt-nextflow pipeline
+// This file holds several functions specific to the main.nf workflow in the Arcadia-Science/prehgt pipeline
 //
 
 class WorkflowMain {

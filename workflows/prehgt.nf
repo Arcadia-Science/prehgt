@@ -11,13 +11,13 @@ def checkPathParamList = [params.input, params.blast_db, params.blast_db_tax, pa
 for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
 
 // Check mandatory parameters
-if (params.input)        { ch_input = file(params.input) } else { exit 1, 'TSV file specifying genera not provided!' }
+if (params.input)        { ch_input       = file(params.input) } else { exit 1, 'TSV file specifying genera not provided!' }
 if (params.blast_db)     { ch_BLAST_DB    = Channel.fromPath(params.blast_db) } else { exit 1, 'Path to blast database FASTA file not provided!' }
 if (params.blast_db_tax) { ch_BLAST_TAX   = Channel.fromPath(params.blast_db_tax) } else { exit 1, 'Path to blast database taxonomy SQLITE file not provided!' }
 if (params.ko_list)      { ch_KO_LIST     = Channel.fromPath(params.ko_list) } else { exit 1, 'Path to ko_list file not provided!' }
 if (params.ko_profiles)  { ch_KO_PROFILES = Channel.fromPath(params.ko_profiles) } else { exit 1, 'Path to ko profiles archive not provided!' }
 if (params.hmm_db)       { ch_HMM_DB      = Channel.fromPath(params.hmm_db) } else { exit 1, 'Path to hmm database not provided!' }
-
+if (params.padj)         { ch_padj        = (params.padj) } else { exit 1, 'Adjusted pvalue filtering threshold for subkingdom algorithms not provided!'}
 // Parse input file to retrieve genera to run pipeline on
 metadata = ch_input
     .readLines()
@@ -112,7 +112,7 @@ workflow PREHGT {
 
     // This script processes BLAST matches and their taxonomic lineages to identify sub-kingdom HGT candidates using transfer index.
     // It scores all candidates and writes the scores and other relevant information to a TSV file and outputs a list of candidate gene IDs.
-    blastp_to_hgt_candidates_subkingdom(blastp_add_taxonomy_info.out.tsv)
+    blastp_to_hgt_candidates_subkingdom(blastp_add_taxonomy_info.out.tsv, ch_padj)
 
     /* COMPOSITION HGT CANDIDATE PREDICTION */
 
