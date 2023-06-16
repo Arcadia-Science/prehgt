@@ -148,7 +148,9 @@ Below, we provide an overview of what each step of the pipeline does.
    - **[hmmscan](http://hmmer.org/)**: We [built](./make_hmm_db.snakefile) a [custom HMM database](https://osf.io/trgpc/) to scan for annotations of interest using HMMER3 `hmmscan`. The HMM database currently contains VOGs from [VOGDB](https://vogdb.org/) and [biosynthetic genes](./inputs/hmms/hmm_urls.csv), and can be extended in the future to meet user annotation interests.
 5. **Reporting.** The last step combines all information that the pipeline has produced and outputs the results in a TSV file using the script [combine_results.R](./bin/combine_results.R). The results include the GenBank protein identifier for the HGT candidate, BLAST and relative amino acid usage scores, pangenome information, gene and ortholog annotations, and contextualizing information about the gene such as position in the contiguous sequence. This script also reports whether an HGT candidate is actually contamination by integrating information about the number of times the gene is observed in the pangenome, the similarity of the gene to other hits in the database, and the length of the contiguous sequence that the gene is located on in the genome.
 
-TODO: add pipeline overview DAG/figure.
+Below, we present a schematic overview of the pipeline.
+
+![](./fig/Fig1-preHGT-workflow%402x.png)
 
 ### Outputs
 
