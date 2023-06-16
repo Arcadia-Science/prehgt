@@ -36,7 +36,7 @@ jobs:
         with:
           auto-update-conda: true
           channels: conda-forge,bioconda,defaults
-          python-version: 3.11 
+          python-version: 3.11
 
       - name: Conda clean
         run: conda clean -a
