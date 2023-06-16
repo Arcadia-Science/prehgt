@@ -1,6 +1,6 @@
 channels:
-   - conda-forge
-   - bioconda
-   - defaults
+  - conda-forge
+  - bioconda
+  - defaults
 dependencies:
-   - hmmer=3.3.2 
+  - hmmer=3.3.2
