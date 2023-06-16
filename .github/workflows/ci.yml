@@ -31,9 +31,16 @@ jobs:
         with:
           version: "${{ matrix.NXF_VER }}"
 
+      - name: Set up miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          channels: conda-forge,bioconda,defaults
+          python-version: 3.11 
+
+      - name: Conda clean
+        run: conda clean -a
+
       - name: Run pipeline with test data
-        # TODO: You can customise CI pipeline run tests as required
-        # For example: adding multiple test runs with different parameters
-        # Remember that you can parallelise this by using strategy.matrix
         run: |
           nextflow run ${GITHUB_WORKSPACE} -profile test,conda --outdir ./results
