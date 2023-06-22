@@ -59,8 +59,5 @@ process download_reference_genomes {
     ls *_cds_from_genomic.fna.gz | while read -r line; do
        echo "${prefix},\${line}" >> ${prefix}_genomes.csv
     done
-
-    # reset exit codes from ncbi-genome-download nonsense
-    #(exit 0)
     """
 }
