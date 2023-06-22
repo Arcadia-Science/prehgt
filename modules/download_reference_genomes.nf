@@ -1,6 +1,7 @@
 process download_reference_genomes {
     tag "$genus"
     label 'process_single'
+    //errorStrategy { task.exitStatus == 1 ? 'ignore' : 'terminate' } 
 
     conda "$baseDir/envs/ncbi-genome-download.yml"
     //conda "bioconda::ncbi-genome-download=0.3.1"
@@ -28,8 +29,25 @@ process download_reference_genomes {
     # genbank is separate from refseq, so run twice
     for section in genbank refseq
     do
-        ncbi-genome-download vertebrate_mammalian,vertebrate_other,invertebrate,plant,fungi,protozoa --output-folder ./ --flat-output --genera ${prefix} -F gff,cds-fasta -s \$section --retries 3
+        # first, do a dry run of the download.
+        ncbi-genome-download vertebrate_mammalian,vertebrate_other,invertebrate,plant,fungi,protozoa --output-folder ./ --flat-output --genera ${prefix} -F gff,cds-fasta -s \$section --dry-run
+        exit_code=\$?
+        # if this gives an exit code 1 (ERROR: No downloads matched your filter. Please check your options.), skip that section as there are no outputs
+        if [ \$exit_code -eq 1 ]; then
+            echo "Skipping the next command..."
+        # otherwise, do the download and get the genomes!
+        else
+            ncbi-genome-download vertebrate_mammalian,vertebrate_other,invertebrate,plant,fungi,protozoa --output-folder ./ --flat-output --genera ${prefix} -F gff,cds-fasta -s \$section --retries 3
+            # set the flag to true if genomes were downloaded successfully
+            genomesDownloaded = true 
+        fi
     done
+    
+    if (!genomesDownloaded) {
+        # If no genomes were downloaded, print a message and exit gracefully
+        println "No genomes were downloaded. Exiting..."
+        exit 0
+    }
 
     # when downloading from RefSeq and GenBank sections, there might be duplicate
     # accessions that vary only by GCA_* or GCF_*, where GCF_* files are from RefSeq.
