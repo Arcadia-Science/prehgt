@@ -263,6 +263,6 @@ See [this guide](https://github.com/Arcadia-Science/arcadia-software-handbook/bl
 
 ## Citations
 
-If you use prehgt for your analysis, please cite it using the following DOI:
+If you use prehgt for your analysis, please cite it using the following DOI:(TODO: add doi link).
 
 An extensive list of references for the tools used by the pipeline can be found in the [CITATIONS](./CITATIONS.md) file.
