@@ -1,4 +1,4 @@
-# preHGT: generating a *pre*liminary horizontal gene transfer (_HGT_) candidates using compositional and phylogenetic implicit approaches
+# preHGT: generating *pre*liminary horizontal gene transfer (_HGT_) candidates using compositional and phylogenetic implicit approaches
 
 [![Snakemake](https://img.shields.io/badge/snakemake--green)](https://snakemake.readthedocs.io/en/stable/)
 [![Nextflow](https://img.shields.io/badge/nextflow%20DSL2-%E2%89%A522.10.1-23aa62.svg)](https://www.nextflow.io/)
@@ -121,11 +121,11 @@ Below, we provide an overview of what each step of the pipeline does.
 
 1. **Retrieving gene sequences and annotation files.** The pipeline begins with the user providing a genus or genera of interest in a TSV file. The pipeline then scans GenBank and RefSeq for matching genomes and downloads relevant files. When a genome is available in both GenBank and RefSeq, only the RefSeq version is retained. This step also parses the input files in preparation for future steps.
    - **[ncbi-genome-download](https://github.com/kblin/ncbi-genome-download):** Loops through GenBank and RefSeq to find and download all genomes with gene models (`*_cds_from_genomic.fna.gz`) and genome annotation files (`*_genomic.gff.gz`).
-   - **[delete_gca_files.sh](./bin/delete_gca_files.sh)**: If a genome is in both GenBank and RefSeq, this script deletes the GenBank version and only keep the RefSeq version.
+   - **[delete_gca_files.sh](./bin/delete_gca_files.sh)**: If a genome is in both GenBank and RefSeq, this script deletes the GenBank version and only keeps the RefSeq version.
    - **file parsing**: All `*_cds_from_genomic.fna.gz` files are combined into a single file, and a CSV file that records the total number of downloaded genomes per genus is generated.
 2. **Building a pangenome.** For each genus, the pipeline then combines genes into a pseudopangenome, which reduces the number of genes that are investigated and provides metadata about the gene.
    - **[`mmseqs easy-cluster`](https://github.com/soedinglab/MMseqs2)**: Nucleotide sequences are clustered at 90% length and identity.
-   - **[EMBOSS `transeq`](https://emboss.sourceforge.net/apps/cvs/emboss/apps/transeq.html)**: clustered nucleotide sequences are translated into amino acid sequences.
+   - **[EMBOSS `transeq`](https://emboss.sourceforge.net/apps/cvs/emboss/apps/transeq.html)**: Clustered nucleotide sequences are translated into amino acid sequences.
 3. **Detecting HGT candidates.** Using the genes in the pangenome, the pipeline uses two categories of approaches to identify HGT candidates.
    - **Compositional scan.** The first approach uses relative amino acid usage to detect proteins with outlying composition.
      - [**EMBOSS `pepstats`**](https://embossgui.sourceforge.net/demo/manual/pepstats.html): Measures relative amino acid usage (RAAU) for each gene.
@@ -136,7 +136,7 @@ Below, we provide an overview of what each step of the pipeline does.
      - **[blastp_to_hgt_candidates_kingdom.R](./bin/blastp_to_hgt_candidates_kingdom.R)**:
        - [Alien index](https://doi.org/10.1126/science.1156407): A score of HGT probability based on BLAST hit e-value for the top hit in the kingdom-level acceptor versus donor hits. Because it is based on e-value, it can be biased by BLAST database size.
        - [HGT score](https://doi.org/10.1371/journal.pgen.1003035): A score of HGT probability based on BLAST hit corrected bitscore for the top hit in the kingdom-level acceptor versus donor hits.
-       - [Donor distribution index](https://doi.org/10.1016/j.molp.2022.02.001): An index that calculates the specificity of a HGT candidate gene within the donor groups. It estimates how frequently does the HGT candidate occurs in all the donor groups.
+       - [Donor distribution index](https://doi.org/10.1016/j.molp.2022.02.001): An index that calculates the specificity of an HGT candidate gene within the donor groups. It estimates how frequently does the HGT candidate occurs in all the donor groups.
        - (Normalized) entropy: A measure of the uncertainty or randomness of a set of probabilities. Since there are seven kingdoms investigated, the maximum entropy is `log2(7)`. Entropy is normalized to 0-1 range by dividing by the maximum potential value.
        - Gini coefficient: A measure of inequality among values of a frequency distribution. A Gini coefficient close to 0 indicates that the qseqid is uniformly distributed across all kingdoms.
        - [Aggregate hit score](https://doi.org/10.1371/journal.pcbi.1010686): A score of HGT liklihood calculated by subtracting the sum of normalized corrected bitscores in the donor group from the sum of normalized corrected bitscores in the acceptor group.
@@ -154,14 +154,14 @@ Below, we present a schematic overview of the pipeline.
 
 ### Outputs
 
-The main output is a TSV file summarizing the results of each part of the pipeline. Below we provide a description of each column output column.
+The main output is a TSV file summarizing the results of each part of the pipeline. Below we provide a description of each output column.
 
 #### TSV summary file
 
 <summary> <b>Overview columns</b> </summary>
 
 - **genus**: the input genus for a given HGT candidate
-- **hgt_candidate**: HGT candidate gene sequence name. The name is derived from the original FASTA CDS from genomic file downloaded from NCBI and contains the chromosome name, gene number, and GenBank protein ID if it exists. This is also the BLAST query sequence ID.
+- **hgt_candidate**: HGT candidate gene sequence name. The name is derived from the original FASTA CDS from the genomic file downloaded from NCBI and contains the chromosome name, gene number, and GenBank protein ID if it exists. This is also the BLAST query sequence ID.
 - **method**: the method used to infer the HGT candidate. Currently blast, raau (relative amino acid usage), or both
 <details>
 <summary> <b>Relative amino acid usage columns</b> </summary>
@@ -171,26 +171,26 @@ The main output is a TSV file summarizing the results of each part of the pipeli
 <details>
 <summary> <b>BLAST columns</b> </summary>
 
-- **blast_algorithm_type**: the BLAST algorithm type used to infer the HGT candidate. One of eith kingdom or sub-kingdom.
-- **blast_HGT_score**: HGT score inferred from Alien Index. Also reports contamination liklihood. Since Alien index is only calculated for kingdom level transfers, the score will be NA for all sub-kingdom algorithm type results.
+- **blast_algorithm_type**: the BLAST algorithm type used to infer the HGT candidate. One of either kingdom or sub-kingdom.
+- **blast_HGT_score**: HGT score inferred from Alien index. Also reports contamination liklihood. Since Alien index is only calculated for kingdom level transfers, the score will be NA for all sub-kingdom algorithm type results.
 - **blast_hgt_taxonomy_level**: the taxonomic level at which the HGT event was detected (kingdom, phylum, class, order, family)
 - **blast_acceptor_lineage_at_hgt_taxonomy_level**: the taxonomic lineage of the acceptor genome up to the HGT level
 - **blast_acceptor_lca_level**: within the acceptor group, what level of taxonomy does the lowest common ancestor occur among all matches? If it’s at the phylum level, the HGT event is probably older than if it’s at the genus level. Or, if the HGT is only observed in two phyla, perhaps the HGT happened twice.
-- **blast_acceptor_max_pident**: excluding self matches, the maximum percent identity of matches within the acceptor group.
-- **blast_acceptor_max_bitscore**: excluding self matches, the maximum corrected bitscore of matches within the acceptor group.
+- **blast_acceptor_max_pident**: excluding self matches, the maximum percent identity of matches within the acceptor group
+- **blast_acceptor_max_bitscore**: excluding self matches, the maximum corrected bitscore of matches within the acceptor group
 - **blast_acceptor_min_evalue**: excluding self matches, the minimum evalue of matches within the acceptor group
 - **blast_acceptor_num_matches_at_lineage**: number of BLAST hits at the acceptor_lineage_at_hgt_taxonomy_level
 - **blast_donor_num_matches_at_lineage**: number of BLAST hits at the donor_lineage_at_hgt_taxonomy_level
 - **blast_total_num_matches**: The total number of BLAST hits returned. The maximum is 100, set earlier in the pipeline as the cutoff.
 - **blast_donor_lineage_at_hgt_taxonomy_level**: the lineage of the predicted donor group at the hgt_taxonomy_level
 - **blast_donor_best_match_full_lineage**: the full taxonomic lineage of the best match at hgt_taxonomy_level
-- **blast_donor_best_match_id**: the sequence ide of the best match at hgt_taxonomy_level
+- **blast_donor_best_match_id**: the sequence id of the best match at hgt_taxonomy_level
 - **blast_donor_best_match_pident**: the percent identity of the best match at hgt_taxonomy_level
 - **blast_donor_max_bitscore**: the maximum corrected bitscore of the best match at hgt_taxonomy_level
-- **blast_donor_min_evalue**: the minimum evalue of the best match at hgt_taxonomy_level
+- **blast_donor_min_evalue**: the minimum e-value of the best match at hgt_taxonomy_level
 - **blast_alien_index**: a score of HGT probability based on e-value. > 0 possible HGT, >15 likely HGT, >45 highly likely HGT. (kingdom-level only)
-- **blast_hgt_index**: a score of HGT probability based on bit score. Basically the same as alien index (kingdom-level only)
-- **blast_donor_distribution_index**: within the donor groups, how frequently does the HGT candidate occur in all the donor groups? Is it only seen in bacteria, or is it in bacterial, viruses, and archaea? >0.8 means more specific to a donor group (kingdom-level only)
+- **blast_hgt_index**: a score of HGT probability based on bitscore. Basically the same as Alien index (kingdom-level only)
+- **blast_donor_distribution_index**: within the donor groups, how frequently does the HGT candidate occur in all the donor groups? Is it only seen in bacteria, or is it in bacteria, viruses, and archaea? >0.8 means more specific to a donor group (kingdom-level only)
 - **blast_entropy**: a measure of the uncertainty or randomness of a set of probabilities (kingdom-level only). Gives a higher number for a qseqid that is evenly distributed across all kingdoms. Gives a lower number for a qseqid that is mostly associated with a single kingdom.
 - **blast_entropy_normalized**: the maximum value occurs when all kingdoms are equally represented. The entropy is -log2(1/K), where K is the number of kingdoms. Given 7 kingdoms, the max entropy would be log2(7). Entropy is normalized to 0-1 range by dividing by the maximum potential value.
 - **blast_gini**: Gini Coefficient, a measure of inequality among values of a frequency distribution (kingdom-level only). A Gini coefficient close to 0 indicates that the qseqid is uniformly distributed across all kingdoms. A Gini coefficient close to 1 indicates that the qseqid is specific to one kingdom.
@@ -208,7 +208,7 @@ The main output is a TSV file summarizing the results of each part of the pipeli
 - **kofamscan_threshold**: KofamScan HMM threshold; family-specific adaptive score calculated by KofamScan for each KO family.
 - **kofamscan_score**: KofamScan HMM score. We do not filter annotations that do not meet the threshold, as these may still be useful for sleuthing out potential functions of an HGT candidate. |
 - **kofamscan_evalue**: KofamScan HMM evalue
-- **kofamscan_ko_definition**: Full definition for best KEGG ortholog
+- **kofamscan_ko_definition**: full definition for best KEGG ortholog
 - **hmmscan_domain_name**: domain name for hmmscan hit
 - **hmmscan_description**: description of domain for hmmscan hit
 - **hmmscan_sequence_evalue**: evalue for hmmscan hit
@@ -235,7 +235,7 @@ The main output is a TSV file summarizing the results of each part of the pipeli
 - **gff_strand**: strand in the GFF file
 - **gff_frame**: frame in the GFF file. If a CDS is reported in multiple frames, only one is retained and the total number of frames observed in the original GFF file is reported in the column gff_frame_tally.
 - **gff_attribute**: GFF attribute
-- **gff_seqid_length**: Sequence length for a given seqid in a GFF file.
+- **gff_seqid_length**: sequence length for a given seqid in a GFF file
 - **gff_Dbxref**: GFF Dbxref
 - **gff_gbkey**: GFF GenBank key
 - **gff_gene**: GFF gene name
@@ -247,7 +247,7 @@ The main output is a TSV file summarizing the results of each part of the pipeli
 - **gff_product**: GFF protein product
 - **gff_protein_id**: GFF protein ID
 - **gff_transl_table**: GFF translation table
-- **gff_frame_tally**: total number of frames in which a CDS was observed in the original GFF file. One information for the first frame is retained to reduce reporting redundancy.
+- **gff_frame_tally**: total number of frames in which a CDS was observed in the original GFF file. Only information for the first frame is retained to reduce reporting redundancy.
 </details>
 
 #### Other outputs
