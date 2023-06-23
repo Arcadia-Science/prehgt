@@ -3,9 +3,8 @@ process compositional_scans_to_hgt_candidates {
     label 'process_high_memory'
 
     conda "conda-forge::r-tidyverse=2.0.0 conda-forge::r-fastcluster=1.2.3"
-    //container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-    //    'https://depot.galaxyproject.org/singularity/emboss:6.6.0--hf657eab_5':
-    //    'quay.io/biocontainers/emboss:6.6.0--h440b012_4' }"
+    container "${ workflow.containerEngine == 'docker' ? 'arcadiascience/prehgt-tidyverse:2.0.0':
+        '' }"
 
     input:
     tuple val(genus), path(input_pepstats_txt)
