@@ -7,6 +7,9 @@ process download_reference_genomes {
     errorStrategy { task.exitStatus == 1 ? 'ignore' : 'terminate' } 
 
     conda "$baseDir/envs/ncbi-genome-download.yml"
+    container "${ workflow.containerEngine == 'docker' ? 'arcadiascience/ncbi-genome-download-patch:4c5c24e':
+        '' }"
+    //keep this here bc these will be the download instructions once the software is patched
     //conda "bioconda::ncbi-genome-download=0.3.1"
     //container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
     //    'https://depot.galaxyproject.org/singularity/ncbi-genome-download:0.3.1--pyh5e36f6f_0' :
