@@ -1,11 +1,11 @@
 {
-    "name": "Arcadia-Science/prehgt",
-    "homePage": "https://github.com/Arcadia-Science/prehgt",
-    "repos": {
-        "https://github.com/nf-core/modules.git": {
-            "modules": {
-                "nf-core": {}
-            }
-        }
+  "name": "Arcadia-Science/prehgt",
+  "homePage": "https://github.com/Arcadia-Science/prehgt",
+  "repos": {
+    "https://github.com/nf-core/modules.git": {
+      "modules": {
+        "nf-core": {}
+      }
     }
+  }
 }

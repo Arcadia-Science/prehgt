@@ -1,6 +1,6 @@
 channels:
-   - conda-forge
-   - bioconda
-   - defaults
+  - conda-forge
+  - bioconda
+  - defaults
 dependencies:
-   - diamond=2.1.6
+  - diamond=2.1.6
