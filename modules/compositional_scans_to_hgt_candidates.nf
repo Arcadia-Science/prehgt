@@ -3,7 +3,7 @@ process compositional_scans_to_hgt_candidates {
     label 'process_high_memory'
 
     conda "conda-forge::r-tidyverse=2.0.0 conda-forge::r-fastcluster=1.2.3"
-    container "${ workflow.containerEngine == 'docker' ? 'arcadiascience/prehgt-tidyverse:2.0.0':
+    container "${ workflow.containerEngine == 'docker' ? 'arcadiascience/tidy-prehgt:2.0.0':
         '' }"
 
     input:
