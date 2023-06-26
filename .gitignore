@@ -21,10 +21,10 @@ inputs/microplitis.tsv
 inputs/spomb_pos_control.tsv
 inputs/spomb_pos_control_annot.csv
 inputs/venoms.tsv
+inputs/kofamscan/
+inputs/make_metadata.R
 .nextflow.log*
 .nextflow/
-fig/dag.txt
-fig/dag_edited.pdf
-fig/dag_edited.png
 out_test/
+out_full/
 work/
