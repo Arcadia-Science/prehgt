@@ -7,3 +7,10 @@ docker images
 docker tag ncbi-genome-download arcadiascience/ncbi-genome-download-patch:4c5c24e
 docker push arcadiascience/ncbi-genome-download-patch:4c5c24e
 ```
+
+The R image needed to be run with an explicit linux platform if built on M1 Mac.
+```
+docker build --progress=plain --no-cache --platform linux/x86_64 -t tidy-prehgt tidy-prehgt
+docker tag tidy-prehgt arcadiascience/tidy-prehgt:2.0.0
+docker push arcadiascience/tidy-prehgt:2.0.0
+```
