@@ -70,7 +70,7 @@
                 },
                 "padj": {
                     "type": "float",
-                    "default": 0.01,,
+                    "default": 0.01,
                     "description": "Adjusted p value filtering threshold for sub-kingdom algorithms.",
                     "help_text": "Float between 0 and 1. If no value is given, the default is 0.01."
                 }
