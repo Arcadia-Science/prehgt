@@ -24,8 +24,6 @@
                     "type": "string",
                     "format": "file-path",
                     "mimetype": "text/tsv",
-                    "pattern": "^\\S+\\.tsv$",
-                    "schema": "assets/schema_input.json",
                     "description": "Path to tab-separated file containing genera to from which to predict HGT candidates.",
                     "help_text": "You will need to create a tab-separated file with 1 column that contains the genera to run the pipeline on and a header row."
                 },
@@ -215,5 +213,36 @@
         {
             "$ref": "#/definitions/generic_options"
         }
-    ]
+    ],
+    "properties": {
+        "hook_url": {
+            "type": "string",
+            "default": "None",
+            "hidden": true
+        },
+        "custom_config_version": {
+            "type": "string",
+            "default": "master"
+        },
+        "custom_config_base": {
+            "type": "string",
+            "default": "https://raw.githubusercontent.com/nf-core/configs/master"
+        },
+        "config_profile_description": {
+            "type": "string",
+            "default": "None"
+        },
+        "config_profile_contact": {
+            "type": "string",
+            "default": "None"
+        },
+        "config_profile_url": {
+            "type": "string",
+            "default": "None"
+        },
+        "config_profile_name": {
+            "type": "string",
+            "default": "None"
+        }
+    }
 }
