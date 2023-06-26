@@ -4,7 +4,7 @@ process download_reference_genomes {
     // setting errorStrategy to ignore when exit 1 is seen makes it so that 
     // genera that don't have any matches on GenBank or RefSeq don't progress 
     // through the pipeline, but don't stop everything else from running
-    errorStrategy { task.exitStatus == 1 ? 'ignore' : 'terminate' } 
+    errorStrategy { task.exitStatus in 1..2 ? 'ignore' : 'finish' } 
 
     conda "$baseDir/envs/ncbi-genome-download.yml"
     container "${ workflow.containerEngine == 'docker' ? 'arcadiascience/ncbi-genome-download-patch:4c5c24e':
