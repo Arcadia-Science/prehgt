@@ -12,7 +12,8 @@ for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true
 
 // Check mandatory parameters
 if (params.input)        { ch_input       = file(params.input) } else { exit 1, 'TSV file specifying genera not provided!' }
-if (params.blast_db)     { ch_BLAST_DB    = Channel.fromPath(params.blast_db) } else { exit 1, 'Path to blast database FASTA file not provided!' }
+//if (params.blast_db)     { ch_BLAST_DB    = Channel.fromPath(params.blast_db) } else { exit 1, 'Path to blast database FASTA file not provided!' }
+if (params.blast_db)     { ch_BLAST_DB    = file(params.blast_db) } else { exit 1, 'Path to blast database FASTA file not provided!' }
 if (params.blast_db_tax) { ch_BLAST_TAX   = Channel.fromPath(params.blast_db_tax) } else { exit 1, 'Path to blast database taxonomy SQLITE file not provided!' }
 if (params.ko_list)      { ch_KO_LIST     = Channel.fromPath(params.ko_list) } else { exit 1, 'Path to ko_list file not provided!' }
 if (params.ko_profiles)  { ch_KO_PROFILES = Channel.fromPath(params.ko_profiles) } else { exit 1, 'Path to ko profiles archive not provided!' }
