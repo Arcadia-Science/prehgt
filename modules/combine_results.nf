@@ -13,7 +13,7 @@ process combine_results {
     tuple val(genus), path(genomes_csv)
     tuple val(genus), path(pangenome_cluster_tsv)
     tuple val(genus), path(gff_tsv)
-    tuple val(genus), path(eggnog_tsv)
+    tuple val(genus), path(kofamscan_tsv)
     tuple val(genus), path(hmmscan_tblout)
 
     output:
@@ -23,6 +23,6 @@ process combine_results {
     script:
     def prefix = task.ext.prefix ?: "${genus}"
     """
-    combine_results.R ${compositional_tsv} ${blast_kingdom_tsv} ${blast_subkingdom_tsv} ${genomes_csv} ${pangenome_cluster_tsv} ${gff_tsv} ${eggnog_tsv} ${hmmscan_tblout} ${prefix}_results.tsv ${prefix}_method_tally.tsv
+    combine_results.R ${compositional_tsv} ${blast_kingdom_tsv} ${blast_subkingdom_tsv} ${genomes_csv} ${pangenome_cluster_tsv} ${gff_tsv} ${kofamscan_tsv} ${hmmscan_tblout} ${prefix}_results.tsv ${prefix}_method_tally.tsv
     """
 }
