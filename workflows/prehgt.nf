@@ -17,7 +17,7 @@ if (params.blast_db_tax) { ch_BLAST_TAX   = file(params.blast_db_tax) } else { e
 if (params.ko_list)      { ch_KO_LIST     = file(params.ko_list) } else { exit 1, 'Path to ko_list file not provided!' }
 if (params.ko_profiles)  { ch_KO_PROFILES = file(params.ko_profiles) } else { exit 1, 'Path to ko profiles archive not provided!' }
 if (params.hmm_db)       { ch_HMM_DB      = file(params.hmm_db) } else { exit 1, 'Path to hmm database not provided!' }
-if (params.padj)         { ch_padj        = (params.padj) } else { exit 1, 'Adjusted pvalue filtering threshold for subkingdom algorithms not provided!'}
+if (params.padj)         { ch_padj        = Channel.value(params.padj) } else { exit 1, 'Adjusted pvalue filtering threshold for subkingdom algorithms not provided!'}
 // Parse input file to retrieve genera to run pipeline on
 metadata = ch_input
     .readLines()
