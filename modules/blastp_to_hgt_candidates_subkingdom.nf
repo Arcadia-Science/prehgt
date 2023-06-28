@@ -8,7 +8,7 @@ process blastp_to_hgt_candidates_subkingdom {
 
     input:
     tuple val(genus), path(blast_lineages_tsv)
-    val(padj_threshold)
+    val padj_threshold
 
     output:
     tuple val(genus), path("*_blastp_subkingdom_scores.tsv")  , emit: blast_scores
