@@ -11,7 +11,7 @@ process blastp_add_taxonomy_info {
     tuple val(genus), path(blast_tsv)
 
     output:
-    tuple val(genus), path("*_vs_clustered_nr_lineages.tsv"), emit: tsv
+    tuple val(genus), path("*_vs_clustered_nr_lineages.tsv"), emit: blast_tsv
 
     script:
     def prefix = task.ext.prefix ?: "${genus}"

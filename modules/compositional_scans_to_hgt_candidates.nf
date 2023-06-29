@@ -10,8 +10,8 @@ process compositional_scans_to_hgt_candidates {
     tuple val(genus), path(input_pepstats_txt)
 
     output:
-    tuple val(genus), path("*_clusters.tsv")         , emit: tsv
-    tuple val(genus), path("*_pepstats_gene_lst.txt"), emit: gene_lst
+    tuple val(genus), path("*_clusters.tsv")         , emit: compositional_tsv
+    tuple val(genus), path("*_pepstats_gene_lst.txt"), emit: compositional_gene_lst
 
     script:
     def prefix = task.ext.prefix ?: "${genus}"

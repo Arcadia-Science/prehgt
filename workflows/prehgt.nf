@@ -108,11 +108,11 @@ workflow PREHGT {
     // This script processes BLAST matches and their taxonomic lineages to identify kingdom-level HGT candidates using alien index, horizontal gene transfer index,
     // donor distribution index, and acceptor lowest common ancestor calculations.
     // It scores all candidates and writes the scores and other relevant information to a TSV file and outputs a list of candidate gene IDs.
-    blastp_to_hgt_candidates_kingdom(blastp_add_taxonomy_info.out.tsv)
+    blastp_to_hgt_candidates_kingdom(blastp_add_taxonomy_info.out.blast_tsv)
 
     // This script processes BLAST matches and their taxonomic lineages to identify sub-kingdom HGT candidates using transfer index.
     // It scores all candidates and writes the scores and other relevant information to a TSV file and outputs a list of candidate gene IDs.
-    blastp_to_hgt_candidates_subkingdom(blastp_add_taxonomy_info.out.tsv, ch_padj)
+    blastp_to_hgt_candidates_subkingdom(blastp_add_taxonomy_info.out.blast_tsv, ch_padj)
 
     /* COMPOSITION HGT CANDIDATE PREDICTION */
 
@@ -127,9 +127,9 @@ workflow PREHGT {
 
     // This process combines the lists of HGT candidate genes identified through two different methods - BLAST and compositional scans.
     // The output is a single list containing the unique genes from both input lists.
-    combine_hgt_candidates(compositional_scans_to_hgt_candidates.out.gene_lst, 
-                           blastp_to_hgt_candidates_kingdom.out.gene_lst,
-                           blastp_to_hgt_candidates_subkingdom.out.gene_lst)
+    combine_hgt_candidates(compositional_scans_to_hgt_candidates.out.compositional_gene_lst, 
+                           blastp_to_hgt_candidates_kingdom.out.kingdom_gene_lst,
+                           blastp_to_hgt_candidates_subkingdom.out.subkingdom_gene_lst)
 
     // This process extracts the amino acid sequences of the HGT candidate genes from the pangenome clusters.
     // The outputs is a FASTA file containing the sequences of the identified HGT candidate genes.
@@ -146,13 +146,13 @@ workflow PREHGT {
 
     // Combine all of the results into a single mega TSV file.
     // The results are joined either on the genus or on the HGT candidate gene name, derived from the pangenome FASTA file.
-    combine_results(compositional_scans_to_hgt_candidates.out.tsv,
-                    blastp_to_hgt_candidates_kingdom.out.blast_scores,
-                    blastp_to_hgt_candidates_subkingdom.out.blast_scores,
+    combine_results(compositional_scans_to_hgt_candidates.out.compositional_tsv,
+                    blastp_to_hgt_candidates_kingdom.out.kingdom_blast_scores,
+                    blastp_to_hgt_candidates_subkingdom.out.subkingdom_blast_scores,
                     download_reference_genomes.out.csv,
                     build_genus_pangenome.out.cluster,
-                    combine_and_parse_gff_per_genus.out.tsv,
-                    kofamscan_hgt_candidates.out.tsv,
+                    combine_and_parse_gff_per_genus.out.gff_tsv,
+                    kofamscan_hgt_candidates.out.kofamscan_tsv,
                     hmmscan_hgt_candidates.out.tblout)
 }
 

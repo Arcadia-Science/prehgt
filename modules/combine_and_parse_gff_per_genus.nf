@@ -10,7 +10,7 @@ process combine_and_parse_gff_per_genus {
     tuple val(genus), path(input_gffs)
 
     output:
-    tuple val(genus), path("*_gff_info.tsv"), emit: tsv
+    tuple val(genus), path("*_gff_info.tsv"), emit: gff_tsv
 
     script:
     def prefix = task.ext.prefix ?: "${genus}"

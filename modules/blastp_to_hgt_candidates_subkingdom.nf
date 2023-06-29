@@ -11,8 +11,8 @@ process blastp_to_hgt_candidates_subkingdom {
     val padj_threshold
 
     output:
-    tuple val(genus), path("*_blastp_subkingdom_scores.tsv")  , emit: blast_scores
-    tuple val(genus), path("*_blastp_subkingdom_gene_lst.txt"), emit: gene_lst
+    tuple val(genus), path("*_blastp_subkingdom_scores.tsv")  , emit: subkingdom_blast_scores
+    tuple val(genus), path("*_blastp_subkingdom_gene_lst.txt"), emit: subkingdom_gene_lst
 
     script:
     def prefix = task.ext.prefix ?: "${genus}"

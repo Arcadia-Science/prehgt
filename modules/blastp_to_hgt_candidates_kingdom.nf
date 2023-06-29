@@ -10,8 +10,8 @@ process blastp_to_hgt_candidates_kingdom {
     tuple val(genus), path(blast_lineages_tsv)
 
     output:
-    tuple val(genus), path("*_blastp_kingdom_scores.tsv")  , emit: blast_scores
-    tuple val(genus), path("*_blastp_kingdom_gene_lst.txt"), emit: gene_lst
+    tuple val(genus), path("*_blastp_kingdom_scores.tsv")  , emit: kingdom_blast_scores
+    tuple val(genus), path("*_blastp_kingdom_gene_lst.txt"), emit: kingdom_gene_lst
 
     script:
     def prefix = task.ext.prefix ?: "${genus}"

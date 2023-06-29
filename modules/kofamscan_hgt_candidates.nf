@@ -13,7 +13,7 @@ process kofamscan_hgt_candidates {
     tuple val(genus), path(input_aa_fasta)
     
     output:
-    tuple val(genus), path("*_kofamscan.tsv"), emit: tsv
+    tuple val(genus), path("*_kofamscan.tsv"), emit: kofamscan_tsv
 
     script:
     def prefix = task.ext.prefix ?: "${genus}"
