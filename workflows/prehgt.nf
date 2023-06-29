@@ -133,7 +133,7 @@ workflow PREHGT {
 
     // This process extracts the amino acid sequences of the HGT candidate genes from the pangenome clusters.
     // The outputs is a FASTA file containing the sequences of the identified HGT candidate genes.
-    extract_hgt_candidates(translate_pangenome.out.aa_rep_seq, combine_hgt_candidates.out.gene_lst)
+    extract_hgt_candidates(translate_pangenome.out.aa_rep_seq, combine_hgt_candidates.out.combined_gene_lst)
 
     // This process performs KEGG ortholog annotation via hmm searches using the tool kofamscan
     kofamscan_hgt_candidates(ch_KO_LIST, ch_KO_PROFILES, extract_hgt_candidates.out.fasta)
