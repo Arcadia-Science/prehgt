@@ -127,25 +127,17 @@ workflow PREHGT {
 
     // This process combines the lists of HGT candidate genes identified through two different methods - BLAST and compositional scans.
     // The output is a single list containing the unique genes from both input lists.
-    //ch_compositional = compositional_scans_to_hgt_candidates.out.compositional_gene_lst
-    //ch_blastp_kingdom = blastp_to_hgt_candidates_kingdom.out.kingdom_gene_lst
-    //ch_blastp_subkingdom = blastp_to_hgt_candidates_subkingdom.out.subkingdom_gene_lst
-
-    //ch_combine_hgt_candidates = ch_compositional
-    //    .combine(ch_blastp_kingdom, by: [0])
-    //    .combine(ch_blastp_subkingdom, by: [0])
-
     ch_combine_hgt_candidates = compositional_scans_to_hgt_candidates.out.compositional_gene_lst
         .join(blastp_to_hgt_candidates_kingdom.out.kingdom_gene_lst, by: [0])
         .join(blastp_to_hgt_candidates_subkingdom.out.subkingdom_gene_lst, by: [0])
+
     combine_hgt_candidates(ch_combine_hgt_candidates)
 
     // This process extracts the amino acid sequences of the HGT candidate genes from the pangenome clusters.
     // The outputs is a FASTA file containing the sequences of the identified HGT candidate genes.
     ch_extract_hgt_candidates = translate_pangenome.out.aa_rep_seq
         .join(combine_hgt_candidates.out.combined_gene_lst, by: 0)
-    //ch_extract_hgt_candidates = translate_pangenome.out.aa_rep_seq
-    //                              .join(combine_hgt_candidates.out.combined_gene_lst)
+
     extract_hgt_candidates(ch_extract_hgt_candidates)
 
     // This process performs KEGG ortholog annotation via hmm searches using the tool kofamscan
