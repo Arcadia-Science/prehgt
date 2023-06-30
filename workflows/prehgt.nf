@@ -127,13 +127,26 @@ workflow PREHGT {
 
     // This process combines the lists of HGT candidate genes identified through two different methods - BLAST and compositional scans.
     // The output is a single list containing the unique genes from both input lists.
-    combine_hgt_candidates(compositional_scans_to_hgt_candidates.out.compositional_gene_lst, 
-                           blastp_to_hgt_candidates_kingdom.out.kingdom_gene_lst,
-                           blastp_to_hgt_candidates_subkingdom.out.subkingdom_gene_lst)
+    //ch_compositional = compositional_scans_to_hgt_candidates.out.compositional_gene_lst
+    //ch_blastp_kingdom = blastp_to_hgt_candidates_kingdom.out.kingdom_gene_lst
+    //ch_blastp_subkingdom = blastp_to_hgt_candidates_subkingdom.out.subkingdom_gene_lst
+
+    //ch_combine_hgt_candidates = ch_compositional
+    //    .combine(ch_blastp_kingdom, by: [0])
+    //    .combine(ch_blastp_subkingdom, by: [0])
+
+    ch_combine_hgt_candidates = compositional_scans_to_hgt_candidates.out.compositional_gene_lst
+        .join(blastp_to_hgt_candidates_kingdom.out.kingdom_gene_lst, by: [0])
+        .join(blastp_to_hgt_candidates_subkingdom.out.subkingdom_gene_lst, by: [0])
+    combine_hgt_candidates(ch_combine_hgt_candidates)
 
     // This process extracts the amino acid sequences of the HGT candidate genes from the pangenome clusters.
     // The outputs is a FASTA file containing the sequences of the identified HGT candidate genes.
-    extract_hgt_candidates(translate_pangenome.out.aa_rep_seq, combine_hgt_candidates.out.combined_gene_lst)
+    ch_extract_hgt_candidates = translate_pangenome.out.aa_rep_seq
+        .join(combine_hgt_candidates.out.combined_gene_lst, by: 0)
+    //ch_extract_hgt_candidates = translate_pangenome.out.aa_rep_seq
+    //                              .join(combine_hgt_candidates.out.combined_gene_lst)
+    extract_hgt_candidates(ch_extract_hgt_candidates)
 
     // This process performs KEGG ortholog annotation via hmm searches using the tool kofamscan
     kofamscan_hgt_candidates(ch_KO_LIST, ch_KO_PROFILES, extract_hgt_candidates.out.fasta)
@@ -146,14 +159,16 @@ workflow PREHGT {
 
     // Combine all of the results into a single mega TSV file.
     // The results are joined either on the genus or on the HGT candidate gene name, derived from the pangenome FASTA file.
-    combine_results(compositional_scans_to_hgt_candidates.out.compositional_tsv,
-                    blastp_to_hgt_candidates_kingdom.out.kingdom_blast_scores,
-                    blastp_to_hgt_candidates_subkingdom.out.subkingdom_blast_scores,
-                    download_reference_genomes.out.csv,
-                    build_genus_pangenome.out.cluster,
-                    combine_and_parse_gff_per_genus.out.gff_tsv,
-                    kofamscan_hgt_candidates.out.kofamscan_tsv,
-                    hmmscan_hgt_candidates.out.tblout)
+    ch_combine_results = compositional_scans_to_hgt_candidates.out.compositional_tsv
+        .join(blastp_to_hgt_candidates_kingdom.out.kingdom_blast_scores, by: 0)
+        .join(blastp_to_hgt_candidates_subkingdom.out.subkingdom_blast_scores, by: 0)
+        .join(download_reference_genomes.out.csv, by: 0)
+        .join(build_genus_pangenome.out.cluster, by: 0)
+        .join(combine_and_parse_gff_per_genus.out.gff_tsv, by: 0)
+        .join(kofamscan_hgt_candidates.out.kofamscan_tsv, by: 0)
+        .join(hmmscan_hgt_candidates.out.tblout, by: 0)
+
+    combine_results(ch_combine_results)
 }
 
 /*

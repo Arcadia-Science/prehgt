@@ -7,14 +7,7 @@ process combine_results {
         '' }"
 
     input:
-    tuple val(genus), path(compositional_tsv)
-    tuple val(genus), path(blast_kingdom_tsv)
-    tuple val(genus), path(blast_subkingdom_tsv)
-    tuple val(genus), path(genomes_csv)
-    tuple val(genus), path(pangenome_cluster_tsv)
-    tuple val(genus), path(gff_tsv)
-    tuple val(genus), path(kofamscan_tsv)
-    tuple val(genus), path(hmmscan_tblout)
+    tuple val(genus), path(compositional_tsv), path(blast_kingdom_tsv), path(blast_subkingdom_tsv), path(genomes_csv), path(pangenome_cluster_tsv), path(gff_tsv), path(kofamscan_tsv), path(hmmscan_tblout)
 
     output:
     tuple val(genus), path("*_results.tsv")     , emit: all_results
