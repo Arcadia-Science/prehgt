@@ -6,14 +6,10 @@ process download_reference_genomes {
     // through the pipeline, but don't stop everything else from running
     errorStrategy { task.exitStatus in 1..2 ? 'ignore' : 'finish' } 
 
-    conda "$baseDir/envs/ncbi-genome-download.yml"
-    container "${ workflow.containerEngine == 'docker' ? 'arcadiascience/ncbi-genome-download-patch:4c5c24e':
-        '' }"
-    //keep this here bc these will be the download instructions once the software is patched
-    //conda "bioconda::ncbi-genome-download=0.3.1"
-    //container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-    //    'https://depot.galaxyproject.org/singularity/ncbi-genome-download:0.3.1--pyh5e36f6f_0' :
-    //    'quay.io/biocontainers/ncbi-genome-download:0.3.1--pyh5e36f6f_0' }" 
+    conda "bioconda::ncbi-genome-download=0.3.1=pyh7cba7a3_1"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/ncbi-genome-download:0.3.1--pyh7cba7a3_1' :
+        'quay.io/biocontainers/ncbi-genome-download:0.3.1--pyh7cba7a3_1' }" 
 
     input:
     val genus
