@@ -1,6 +1,6 @@
 process blastp_against_clustered_nr {
     tag "$genus"
-    label 'process_blast'
+    label 'process_high_cpu'
 
     conda "bioconda::diamond=2.1.6"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
