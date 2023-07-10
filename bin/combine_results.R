@@ -11,7 +11,7 @@ args <- commandArgs(trailingOnly = TRUE)
 # inputs:
 compositional_tsv     <- args[1]
 blast_kingdom_tsv     <- args[2]
-blast_subkingdom_tsv    <- args[3]
+blast_subkingdom_tsv  <- args[3]
 genomes_csv           <- args[4]
 pangenome_cluster_tsv <- args[5]
 gff_tsv               <- args[6]

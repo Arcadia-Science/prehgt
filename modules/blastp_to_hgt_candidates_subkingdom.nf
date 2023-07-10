@@ -3,17 +3,16 @@ process blastp_to_hgt_candidates_subkingdom {
     label 'process_low'
 
     conda "conda-forge::r-tidyverse=2.0.0"
-    //container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-    //    'https://depot.galaxyproject.org/singularity/diamond:2.1.6--h5b5514e_1':
-    //    'quay.io/biocontainers/diamond:2.1.6--h5b5514e_1' }"
+    container "${ workflow.containerEngine == 'docker' ? 'arcadiascience/tidy-prehgt:2.0.0':
+        '' }"
 
     input:
     tuple val(genus), path(blast_lineages_tsv)
-    val(padj_threshold)
+    val padj_threshold
 
     output:
-    tuple val(genus), path("*_blastp_subkingdom_scores.tsv")  , emit: blast_scores
-    tuple val(genus), path("*_blastp_subkingdom_gene_lst.txt"), emit: gene_lst
+    tuple val(genus), path("*_blastp_subkingdom_scores.tsv")  , emit: subkingdom_blast_scores
+    tuple val(genus), path("*_blastp_subkingdom_gene_lst.txt"), emit: subkingdom_gene_lst
 
     script:
     def prefix = task.ext.prefix ?: "${genus}"

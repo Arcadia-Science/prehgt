@@ -8,8 +8,7 @@ process extract_hgt_candidates {
         'quay.io/biocontainers/seqtk:1.3--h7132678_4' }"
 
     input:
-    tuple val(genus), path(input_aa_fasta)
-    tuple val(genus), path(input_gene_lst)
+    tuple val(genus), path(input_aa_fasta), path(input_gene_lst)
     
     output:
     tuple val(genus), path("*_aa.fasta")    , emit: fasta

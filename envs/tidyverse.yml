@@ -1,8 +1,0 @@
-channels:
-   - conda-forge
-   - bioconda
-   - defaults
-dependencies:
-   - r-tidyverse=2.0.0
-   - r-janitor=2.2.0
-   - r-fastcluster=1.2.3

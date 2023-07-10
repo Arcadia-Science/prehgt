@@ -85,7 +85,7 @@ rule combine_and_parse_gff_per_genus:
     input: gff = checkpoint_download_reference_genomes,
     output: gff = "outputs/genus_pangenome_raw/{genus}_gff_info.tsv"
     benchmark: "benchmarks/combine_gff_per_genus/{genus}.tsv"
-    conda: "envs/tidyverse.yml"
+    conda: "envs/tidy-prehgt.yml"
     shell:'''
     bin/combine_and_parse_gff_per_genus.R {output} {input}
     '''
@@ -148,7 +148,7 @@ rule compositional_scans_to_hgt_candidates:
         tsv="outputs/compositional_scans_hgt_candidates/{genus}_clusters.tsv",
         gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_pepstats_gene_lst.txt"
     benchmark: "benchmarks/compositional_scans_to_hgt_candidates/{genus}.tsv"
-    conda: "envs/tidyverse.yml"
+    conda: "envs/tidy-prehgt.yml"
     shell:'''
     bin/compositional_scans_to_hgt_candidates.R {input.raau} {output.tsv} {output.gene_lst}
     '''
@@ -186,7 +186,7 @@ rule blast_add_taxonomy_info:
         tsv="outputs/blast_diamond/{genus}_vs_clustered_nr.tsv",
         sqldb="inputs/nr_cluster_taxid_formatted_final.sqlite" # downloaded from S3...TBD on how to make available, it's 63 GB
     output: tsv="outputs/blast_diamond/{genus}_vs_clustered_nr_lineages.tsv"
-    conda: "envs/r-sql.yml"
+    conda: "envs/tidy-prehgt.yml"
     benchmark: "benchmarks/blast_add_taxonomy_info/{genus}.tsv"
     shell:'''
     bin/blastp_add_taxonomy_info.R {input.sqldb} {input.tsv} {output.tsv}
@@ -201,7 +201,7 @@ rule blast_to_hgt_candidates_kingdom:
     output: 
         gene_lst="outputs/blast_hgt_candidates/{genus}_blastp_kingdom_gene_lst.txt",
         tsv="outputs/blast_hgt_candidates/{genus}_blastp_kingdom_scores.tsv"
-    conda: "envs/tidyverse.yml"
+    conda: "envs/tidy-prehgt.yml"
     benchmark: "benchmarks/blast_to_hgt_candidates_kingdom/{genus}.tsv"
     shell:'''
     bin/blastp_to_hgt_candidates_kingdom.R {input.tsv} {output.tsv} {output.gene_lst}
@@ -216,7 +216,7 @@ rule blast_to_hgt_candidates_subkingdom:
     output: 
         gene_lst="outputs/blast_hgt_candidates/{genus}_blastp_subkingdom_gene_lst.txt",
         tsv="outputs/blast_hgt_candidates/{genus}_blastp_subkingdom_scores.tsv"
-    conda: "envs/tidyverse.yml"
+    conda: "envs/tidy-prehgt.yml"
     benchmark: "benchmarks/blast_to_hgt_candidates_subkingdom/{genus}.tsv"
     shell:'''
     bin/blastp_to_hgt_candidates_subkingdom.R {input.tsv} 0.01 {output.tsv} {output.gene_lst}
@@ -338,7 +338,7 @@ rule combine_results:
     output: 
         all_results = "outputs/hgt_candidates_final/{genus}_results.tsv",
         method_tally = "outputs/hgt_candidates_final/{genus}_method_tally.tsv"
-    conda: "envs/tidyverse.yml"
+    conda: "envs/tidy-prehgt.yml"
     shell:'''
     bin/combine_results.R {input.compositional} {input.blast_kingdom} {input.blast_subkingdom} {input.genome_csv} {input.pangenome_cluster} {input.gff} {input.kofamscan} {input.hmmscan}
     '''

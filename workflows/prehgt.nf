@@ -12,12 +12,12 @@ for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true
 
 // Check mandatory parameters
 if (params.input)        { ch_input       = file(params.input) } else { exit 1, 'TSV file specifying genera not provided!' }
-if (params.blast_db)     { ch_BLAST_DB    = Channel.fromPath(params.blast_db) } else { exit 1, 'Path to blast database FASTA file not provided!' }
-if (params.blast_db_tax) { ch_BLAST_TAX   = Channel.fromPath(params.blast_db_tax) } else { exit 1, 'Path to blast database taxonomy SQLITE file not provided!' }
-if (params.ko_list)      { ch_KO_LIST     = Channel.fromPath(params.ko_list) } else { exit 1, 'Path to ko_list file not provided!' }
-if (params.ko_profiles)  { ch_KO_PROFILES = Channel.fromPath(params.ko_profiles) } else { exit 1, 'Path to ko profiles archive not provided!' }
-if (params.hmm_db)       { ch_HMM_DB      = Channel.fromPath(params.hmm_db) } else { exit 1, 'Path to hmm database not provided!' }
-if (params.padj)         { ch_padj        = (params.padj) } else { exit 1, 'Adjusted pvalue filtering threshold for subkingdom algorithms not provided!'}
+if (params.blast_db)     { ch_BLAST_DB    = file(params.blast_db) } else { exit 1, 'Path to blast database FASTA file not provided!' }
+if (params.blast_db_tax) { ch_BLAST_TAX   = file(params.blast_db_tax) } else { exit 1, 'Path to blast database taxonomy SQLITE file not provided!' }
+if (params.ko_list)      { ch_KO_LIST     = file(params.ko_list) } else { exit 1, 'Path to ko_list file not provided!' }
+if (params.ko_profiles)  { ch_KO_PROFILES = file(params.ko_profiles) } else { exit 1, 'Path to ko profiles archive not provided!' }
+if (params.hmm_db)       { ch_HMM_DB      = file(params.hmm_db) } else { exit 1, 'Path to hmm database not provided!' }
+if (params.padj)         { ch_padj        = Channel.value(params.padj) } else { exit 1, 'Adjusted pvalue filtering threshold for subkingdom algorithms not provided!'}
 // Parse input file to retrieve genera to run pipeline on
 metadata = ch_input
     .readLines()
@@ -108,11 +108,11 @@ workflow PREHGT {
     // This script processes BLAST matches and their taxonomic lineages to identify kingdom-level HGT candidates using alien index, horizontal gene transfer index,
     // donor distribution index, and acceptor lowest common ancestor calculations.
     // It scores all candidates and writes the scores and other relevant information to a TSV file and outputs a list of candidate gene IDs.
-    blastp_to_hgt_candidates_kingdom(blastp_add_taxonomy_info.out.tsv)
+    blastp_to_hgt_candidates_kingdom(blastp_add_taxonomy_info.out.blast_tsv)
 
     // This script processes BLAST matches and their taxonomic lineages to identify sub-kingdom HGT candidates using transfer index.
     // It scores all candidates and writes the scores and other relevant information to a TSV file and outputs a list of candidate gene IDs.
-    blastp_to_hgt_candidates_subkingdom(blastp_add_taxonomy_info.out.tsv, ch_padj)
+    blastp_to_hgt_candidates_subkingdom(blastp_add_taxonomy_info.out.blast_tsv, ch_padj)
 
     /* COMPOSITION HGT CANDIDATE PREDICTION */
 
@@ -127,13 +127,18 @@ workflow PREHGT {
 
     // This process combines the lists of HGT candidate genes identified through two different methods - BLAST and compositional scans.
     // The output is a single list containing the unique genes from both input lists.
-    combine_hgt_candidates(compositional_scans_to_hgt_candidates.out.gene_lst, 
-                           blastp_to_hgt_candidates_kingdom.out.gene_lst,
-                           blastp_to_hgt_candidates_subkingdom.out.gene_lst)
+    ch_combine_hgt_candidates = compositional_scans_to_hgt_candidates.out.compositional_gene_lst
+        .join(blastp_to_hgt_candidates_kingdom.out.kingdom_gene_lst, by: [0])
+        .join(blastp_to_hgt_candidates_subkingdom.out.subkingdom_gene_lst, by: [0])
+
+    combine_hgt_candidates(ch_combine_hgt_candidates)
 
     // This process extracts the amino acid sequences of the HGT candidate genes from the pangenome clusters.
     // The outputs is a FASTA file containing the sequences of the identified HGT candidate genes.
-    extract_hgt_candidates(translate_pangenome.out.aa_rep_seq, combine_hgt_candidates.out.gene_lst)
+    ch_extract_hgt_candidates = translate_pangenome.out.aa_rep_seq
+        .join(combine_hgt_candidates.out.combined_gene_lst, by: 0)
+
+    extract_hgt_candidates(ch_extract_hgt_candidates)
 
     // This process performs KEGG ortholog annotation via hmm searches using the tool kofamscan
     kofamscan_hgt_candidates(ch_KO_LIST, ch_KO_PROFILES, extract_hgt_candidates.out.fasta)
@@ -146,14 +151,16 @@ workflow PREHGT {
 
     // Combine all of the results into a single mega TSV file.
     // The results are joined either on the genus or on the HGT candidate gene name, derived from the pangenome FASTA file.
-    combine_results(compositional_scans_to_hgt_candidates.out.tsv,
-                    blastp_to_hgt_candidates_kingdom.out.blast_scores,
-                    blastp_to_hgt_candidates_subkingdom.out.blast_scores,
-                    download_reference_genomes.out.csv,
-                    build_genus_pangenome.out.cluster,
-                    combine_and_parse_gff_per_genus.out.tsv,
-                    kofamscan_hgt_candidates.out.tsv,
-                    hmmscan_hgt_candidates.out.tblout)
+    ch_combine_results = compositional_scans_to_hgt_candidates.out.compositional_tsv
+        .join(blastp_to_hgt_candidates_kingdom.out.kingdom_blast_scores, by: 0)
+        .join(blastp_to_hgt_candidates_subkingdom.out.subkingdom_blast_scores, by: 0)
+        .join(download_reference_genomes.out.csv, by: 0)
+        .join(build_genus_pangenome.out.cluster, by: 0)
+        .join(combine_and_parse_gff_per_genus.out.gff_tsv, by: 0)
+        .join(kofamscan_hgt_candidates.out.kofamscan_tsv, by: 0)
+        .join(hmmscan_hgt_candidates.out.tblout, by: 0)
+
+    combine_results(ch_combine_results)
 }
 
 /*
