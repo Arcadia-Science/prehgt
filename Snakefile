@@ -347,5 +347,5 @@ rule combine_results:
     output: "outputs/hgt_candidates_final/all_results.tsv"
     conda: "envs/tidy-prehgt.yml"
     shell:'''
-    bin/combine_results.R {input}
+    bin/combine_results.R {output} {input}
     '''
