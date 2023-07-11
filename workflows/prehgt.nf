@@ -52,6 +52,7 @@ include { combine_and_parse_gff_per_genus } from '../modules/combine_and_parse_g
 include { kofamscan_hgt_candidates        } from '../modules/kofamscan_hgt_candidates'
 include { hmmscan_hgt_candidates          } from '../modules/hmmscan_hgt_candidates'
 include { combine_results_genus           } from '../modules/combine_results_genus'
+include { combine_results                 } from '../modules/combine_results'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
