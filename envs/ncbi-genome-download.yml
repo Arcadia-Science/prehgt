@@ -3,6 +3,4 @@ channels:
    - bioconda
    - defaults
 dependencies:
-   - pip
-   - pip:
-      - git+https://github.com/chasemc/ncbi-genome-download@4c5c24e27aa8123c7995890046b17b815da35 
+   - ncbi-genome-download=0.3.1=pyh7cba7a3_1
