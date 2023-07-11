@@ -1,6 +1,6 @@
 process kofamscan_hgt_candidates {
     tag "$genus"
-    label 'process_blast'
+    label 'process_high_cpu'
 
     conda "bioconda::kofamscan=1.3.0"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
