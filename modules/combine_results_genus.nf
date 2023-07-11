@@ -1,4 +1,4 @@
-process combine_results {
+process combine_results_genus {
     tag "$genus"
     label 'process_low'
 
