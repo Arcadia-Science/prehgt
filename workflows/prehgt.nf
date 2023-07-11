@@ -51,7 +51,7 @@ include { extract_hgt_candidates          } from '../modules/extract_hgt_candida
 include { combine_and_parse_gff_per_genus } from '../modules/combine_and_parse_gff_per_genus'
 include { kofamscan_hgt_candidates        } from '../modules/kofamscan_hgt_candidates'
 include { hmmscan_hgt_candidates          } from '../modules/hmmscan_hgt_candidates'
-include { combine_results                 } from '../modules/combine_results'
+include { combine_results_genus           } from '../modules/combine_results_genus'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -151,7 +151,7 @@ workflow PREHGT {
 
     // Combine all of the results into a single mega TSV file.
     // The results are joined either on the genus or on the HGT candidate gene name, derived from the pangenome FASTA file.
-    ch_combine_results = compositional_scans_to_hgt_candidates.out.compositional_tsv
+    ch_combine_results_genus = compositional_scans_to_hgt_candidates.out.compositional_tsv
         .join(blastp_to_hgt_candidates_kingdom.out.kingdom_blast_scores, by: 0)
         .join(blastp_to_hgt_candidates_subkingdom.out.subkingdom_blast_scores, by: 0)
         .join(download_reference_genomes.out.csv, by: 0)
@@ -160,7 +160,7 @@ workflow PREHGT {
         .join(kofamscan_hgt_candidates.out.kofamscan_tsv, by: 0)
         .join(hmmscan_hgt_candidates.out.tblout, by: 0)
 
-    combine_results(ch_combine_results)
+    combine_results_genus(ch_combine_results_genus)
 }
 
 /*
