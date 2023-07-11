@@ -16,6 +16,6 @@ process combine_results {
     script:
     def prefix = task.ext.prefix ?: "${genus}"
     """
-    combine_results.R ${compositional_tsv} ${blast_kingdom_tsv} ${blast_subkingdom_tsv} ${genomes_csv} ${pangenome_cluster_tsv} ${gff_tsv} ${kofamscan_tsv} ${hmmscan_tblout} ${prefix}_results.tsv ${prefix}_method_tally.tsv
+    combine_results_genus.R ${compositional_tsv} ${blast_kingdom_tsv} ${blast_subkingdom_tsv} ${genomes_csv} ${pangenome_cluster_tsv} ${gff_tsv} ${kofamscan_tsv} ${hmmscan_tblout} ${prefix}_results.tsv ${prefix}_method_tally.tsv
     """
 }
