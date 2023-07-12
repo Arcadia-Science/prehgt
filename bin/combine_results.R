@@ -8,8 +8,7 @@ library(purrr)
 args <- commandArgs(trailingOnly = TRUE)
 # output
 out_tsv     <- args[1]
-in_tsvs     <- args[2]:args[length(args)]
-
+in_tsvs     <- args[2:length(args)]
 
 # read, combine, and write results files ----------------------------------
 
