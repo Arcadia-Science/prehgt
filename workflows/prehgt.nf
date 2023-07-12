@@ -162,6 +162,8 @@ workflow PREHGT {
         .join(hmmscan_hgt_candidates.out.tblout, by: 0)
 
     combine_results_genus(ch_combine_results_genus)
+
+    combine_results(combine_results_genus.out.all_results.collect{ it[1] })
 }
 
 /*
