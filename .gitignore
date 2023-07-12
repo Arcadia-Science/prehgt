@@ -23,6 +23,8 @@ inputs/spomb_pos_control_annot.csv
 inputs/venoms.tsv
 inputs/kofamscan/
 inputs/make_metadata.R
+inputs/20230630_genbank_assembly_summaries.tsv.gz
+inputs/20230630_genbank_genomes.tsv.gz
 .nextflow.log*
 .nextflow/
 out_test/
