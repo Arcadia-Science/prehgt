@@ -17,8 +17,7 @@ while("Trametes" in GENUS):
 # accession (inferred from checkpoint_download_reference_genomes): Finds all accessions for genomes associated with a given genus.
 
 rule all:
-    input: 
-        expand("outputs/hgt_candidates_final/{genus}_results.tsv", genus = GENUS)
+    input: "outputs/hgt_candidates_final/all_results.tsv"
         
 ###################################################
 ## download references & build pangenome
@@ -321,7 +320,7 @@ rule hmmscan_hgt_candidates:
 ## Combine results
 ###################################################
 
-rule combine_results:
+rule combine_results_genus:
     '''
     Combine all of the results into a single mega TSV file.
     The results are joined either on the genus or on the HGT candidate gene name, derived from the pangenome FASTA file.
@@ -340,5 +339,13 @@ rule combine_results:
         method_tally = "outputs/hgt_candidates_final/{genus}_method_tally.tsv"
     conda: "envs/tidy-prehgt.yml"
     shell:'''
-    bin/combine_results.R {input.compositional} {input.blast_kingdom} {input.blast_subkingdom} {input.genome_csv} {input.pangenome_cluster} {input.gff} {input.kofamscan} {input.hmmscan}
+    bin/combine_results_genus.R {input.compositional} {input.blast_kingdom} {input.blast_subkingdom} {input.genome_csv} {input.pangenome_cluster} {input.gff} {input.kofamscan} {input.hmmscan}
+    '''
+
+rule combine_results:
+    input: expand("outputs/hgt_candidates_final/{genus}_results.tsv", genus = GENUS)
+    output: "outputs/hgt_candidates_final/all_results.tsv"
+    conda: "envs/tidy-prehgt.yml"
+    shell:'''
+    bin/combine_results.R {output} {input}
     '''
