@@ -1,5 +1,4 @@
 process combine_results {
-    //tag "$genus"
     label 'process_low'
 
     conda "conda-forge::r-tidyverse=2.0.0 conda-forge::r-janitor=2.2.0"
