@@ -274,7 +274,7 @@ rule download_kofamscan_ko_list:
     output: "inputs/kofamscandb/ko_list"
     params: outdir = "inputs/kofamscandb/"
     shell:'''
-    curl -JLO {output}.gz ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip {output}.gz -C {params.outdir}
+    curl -JLo {output}.gz ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip {output}.gz -C {params.outdir}
     '''
 
 rule download_kofamscan_profiles:
@@ -284,7 +284,7 @@ rule download_kofamscan_profiles:
     output: "inputs/kofamscandb/profiles/prokaryote.hal"
     params: outdir = "inputs/kofamscandb/"
     shell:'''
-    curl -JLO {params.outdir}/profiles.tar.gz ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz && tar xf {params.outdir}/profiles.tar.gz -C {params.outdir}
+    curl -JLo {params.outdir}/profiles.tar.gz ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz && tar xf {params.outdir}/profiles.tar.gz -C {params.outdir}
     '''
 
 rule kofamscan_hgt_candidates:
