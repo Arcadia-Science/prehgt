@@ -2,12 +2,8 @@ import pandas as pd
 import csv
 import os
 
-metadata = pd.read_csv("~/Desktop/emilys_fungi.tsv", header = 0, sep = "\t")
+metadata = pd.read_csv("inputs/example_input.tsv", header = 0, sep = "\t")
 GENUS = metadata['genus'].unique().tolist()
-
-# remove Trametes String from genus list
-while("Trametes" in GENUS):
-    GENUS.remove("Trametes")
 
 # explanation of wildcards:
 # genus (defined by GENUS): All of the genera that the pipeline will be executed on. This is defined from an input metadata file. 
