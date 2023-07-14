@@ -69,10 +69,10 @@ checkpoint download_reference_genomes:
     cat {params.outdir}/*_cds_from_genomic.fna.gz | gunzip > inputs/genbank/{wildcards.genus}_cds.fna
 
     # record the genomes were downloaded in a csv file
-    echo "genus,genome" > {params.outdir}/{wildcards.genus}_genomes.csv
+    echo "genus,genome" > {output.genome_csv}
     ls {params.outdir}/*_cds_from_genomic.fna.gz | while read -r line; do
        bn=$(basename ${{line}})
-       echo "{wildcards.genus},\${{bn}}" >> inputs/genbank/{wildcards.genus}_genomes.csv
+       echo "{wildcards.genus},${{bn}}" >> {output.genome_csv}
     done
     '''
 
@@ -274,7 +274,7 @@ rule download_kofamscan_ko_list:
     output: "inputs/kofamscandb/ko_list"
     params: outdir = "inputs/kofamscandb/"
     shell:'''
-    curl -JLo {output}.gz ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip {output}.gz -C {params.outdir}
+    curl -JLo {output}.gz ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip -c {output}.gz > {output}
     '''
 
 rule download_kofamscan_profiles:
@@ -329,7 +329,6 @@ rule hmmscan_hgt_candidates:
     threads: 8
     benchmark: "benchmarks/hmmscan_hgt_candidates/{genus}.tsv"
     shell:'''
-    hmmpress {input.hmmdb}
     hmmscan --cpu {threads} --tblout {output.tblout} -o {output.out} {input.hmmdb} {input.fa}
     '''
 
@@ -356,7 +355,7 @@ rule combine_results_genus:
         method_tally = "outputs/hgt_candidates_final/{genus}_method_tally.tsv"
     conda: "envs/tidy-prehgt.yml"
     shell:'''
-    bin/combine_results_genus.R {input.compositional} {input.blast_kingdom} {input.blast_subkingdom} {input.genome_csv} {input.pangenome_cluster} {input.gff} {input.kofamscan} {input.hmmscan}
+    bin/combine_results_genus.R {input.compositional} {input.blast_kingdom} {input.blast_subkingdom} {input.genome_csv} {input.pangenome_cluster} {input.gff} {input.kofamscan} {input.hmmscan} {output.all_results} {output.method_tally}
     '''
 
 rule combine_results:
