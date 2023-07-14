@@ -14,6 +14,7 @@ tmp/
 inputs/nr_cluster_taxid_formatted_final.sqlite
 inputs/nr_cluster_taxid_formatted_final.tsv
 inputs/nr_rep_seq.fasta.gz
+inputs/kofamscandb
 inputs/eggnog_db/
 inputs/hmms/
 inputs/candidate_fungi_for_bio_test_data_set_small.tsv
