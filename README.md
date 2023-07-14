@@ -10,7 +10,7 @@ preHGT is a pipeline that quickly pre-screens genomes across the tree of life fo
 The preHGT pipeline wraps existing parametric and implicit phylogenetic methods for HGT detection and reports multiple metrics about input genome contamination.
 It quickly produces a "good-enough" candidate list of genes that researchers can further investigate with more stringent HGT detection methods, different data modalities, or wet lab experimentation.
 
-For more scientific details about the preHGT, see [this pub](TODO: add doi link).
+For more scientific details about the preHGT, see [this pub](https://doi.org/10.57844/arcadia-jfbp-7p11).
 
 We're not picky about capitalization; choose whatever feels right to you (prehgt, preHGT) and feel free to capitalizate at the beginning of a sentence if it brings you joy (PreHGT).
 
@@ -264,6 +264,6 @@ See [this guide](https://github.com/Arcadia-Science/arcadia-software-handbook/bl
 
 ## Citations
 
-If you use prehgt for your analysis, please cite it using the following DOI:(TODO: add doi link).
+If you use prehgt for your analysis, please cite it using the following DOI: [10.57844/arcadia-jfbp-7p11](https://doi.org/10.57844/arcadia-jfbp-7p11).
 
 An extensive list of references for the tools used by the pipeline can be found in the [CITATIONS](./CITATIONS.md) file.
