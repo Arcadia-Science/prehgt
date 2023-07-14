@@ -2,10 +2,7 @@ import pandas as pd
 import csv
 import os
 
-#metadata = pd.read_csv("inputs/venoms.tsv", header = 0, sep = "\t")
-metadata = pd.read_csv("inputs/candidate_fungi_for_bio_test_data_set.tsv", header = 0, sep = "\t")
-source = ["genome"]
-metadata = metadata.loc[metadata['source'].isin(source)] 
+metadata = pd.read_csv("~/Desktop/emilys_fungi.tsv", header = 0, sep = "\t")
 GENUS = metadata['genus'].unique().tolist()
 
 # remove Trametes String from genus list
@@ -17,7 +14,7 @@ while("Trametes" in GENUS):
 # accession (inferred from checkpoint_download_reference_genomes): Finds all accessions for genomes associated with a given genus.
 
 rule all:
-    input: "outputs/hgt_candidates_final/all_results.tsv"
+    input: "outputs/final_results/all_results.tsv"
         
 ###################################################
 ## download references & build pangenome
@@ -39,6 +36,8 @@ checkpoint download_reference_genomes:
     params: outdir= lambda wildcards: "inputs/genbank/" + wildcards.genus
     benchmark: "benchmarks/download_reference_genomes/{genus}.tsv"
     shell:'''
+    # don't exit immediately if we get an exit 1, keep running the script.
+    set +e
     # NOTE this needs to change to accomodate bacteria or archaea inputs.
     # I'm nervous about genus collisions in the NCBI taxonomy (esp happens with viruses, i don't know if it happens between bacteria <-> euks). 
     # I could change this to go from taxid, which will be unique, harder for a user to interpret at a glance.
@@ -47,7 +46,16 @@ checkpoint download_reference_genomes:
     # genbank is separate from refseq, so run twice
     for section in genbank refseq
     do
-        ncbi-genome-download vertebrate_mammalian,vertebrate_other,invertebrate,plant,fungi,protozoa --output-folder {params.outdir} --flat-output --genera {wildcards.genus} -F gff,cds-fasta -s \$section --retries 3
+        ncbi-genome-download vertebrate_mammalian,vertebrate_other,invertebrate,plant,fungi,protozoa --output-folder {params.outdir} --flat-output --genera {wildcards.genus} -F gff,cds-fasta -s $section --dry-run
+        exit_code=$?
+        # if this gives an exit code 1 (ERROR: No downloads matched your filter. Please check your options.), skip that section as there are no outputs
+        if [ $exit_code -eq 1 ]; then
+            echo "Skipping the next command..."
+            (exit 0) # reset exit code. failing the dry run is not problematic
+        # otherwise, do the download and get the genomes!
+        else
+            ncbi-genome-download vertebrate_mammalian,vertebrate_other,invertebrate,plant,fungi,protozoa --output-folder {params.outdir} --flat-output --genera {wildcards.genus} -F gff,cds-fasta -s $section --retries 3
+        fi
     done
 
     # when downloading from RefSeq and GenBank sections, there might be duplicate
@@ -238,7 +246,7 @@ rule combine_hgt_candidates:
        "outputs/blast_hgt_candidates/{genus}_blastp_kingdom_gene_lst.txt",
        "outputs/blast_hgt_candidates/{genus}_blastp_subkingdom_gene_lst.txt",
        "outputs/compositional_scans_hgt_candidates/{genus}_pepstats_gene_lst.txt"
-    output: "outputs/hgt_candidates/{genus}_blastp_gene_lst.txt"
+    output: "outputs/hgt_candidates/{genus}_gene_lst.txt"
     conda: "envs/csvtk.yml"
     shell:'''
     cat {input} | csvtk freq -H -f 1 | csvtk cut -f 1 -o {output}
@@ -266,7 +274,7 @@ rule download_kofamscan_ko_list:
     output: "inputs/kofamscandb/ko_list"
     params: outdir = "inputs/kofamscandb/"
     shell:'''
-    wget -O {output}.gz ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip {output}.gz -C {params.outdir}
+    curl -JLO {output}.gz ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip {output}.gz -C {params.outdir}
     '''
 
 rule download_kofamscan_profiles:
@@ -276,7 +284,7 @@ rule download_kofamscan_profiles:
     output: "inputs/kofamscandb/profiles/prokaryote.hal"
     params: outdir = "inputs/kofamscandb/"
     shell:'''
-    wget -O {params.outdir}/profiles.tar.gz ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz && tar xf {params.outdir}/profiles.tar.gz -C {params.outdir}
+    curl -JLO {params.outdir}/profiles.tar.gz ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz && tar xf {params.outdir}/profiles.tar.gz -C {params.outdir}
     '''
 
 rule kofamscan_hgt_candidates:
@@ -297,12 +305,21 @@ rule kofamscan_hgt_candidates:
     exec_annotation --format detail-tsv --ko-list {input.kolist} --profile {params.profilesdir} --cpu {threads} -o {output} {input.fa}
     '''
 
+rule hmmpress:
+    input: "inputs/hmms/all_hmms.hmm",
+    output: "inputs/hmms/all_hmms.hmm.h3i"
+    conda: "envs/hmmer.yml"
+    shell:'''
+    hmmpress {input}
+    '''
+
 rule hmmscan_hgt_candidates:
     '''
     Using the hmm file built in make_hmm_db.snakefile, this rule uses hidden markov models to annotate specific protein classes of interest.
     At the moment it targets viruses and biosynthetic gene clusters, but the HMM file can be expanded in the aforementioned snakefile as desired. 
     '''
     input:
+        hmmpress = "inputs/hmms/all_hmms.hmm.h3i",
         hmmdb="inputs/hmms/all_hmms.hmm",
         fa="outputs/hgt_candidates/{genus}_aa.fasta"
     output:
@@ -344,7 +361,7 @@ rule combine_results_genus:
 
 rule combine_results:
     input: expand("outputs/hgt_candidates_final/{genus}_results.tsv", genus = GENUS)
-    output: "outputs/hgt_candidates_final/all_results.tsv"
+    output: "outputs/final_results/all_results.tsv"
     conda: "envs/tidy-prehgt.yml"
     shell:'''
     bin/combine_results.R {output} {input}
