@@ -1,6 +1,6 @@
 process blastp_to_hgt_candidates_subkingdom {
     tag "$genus"
-    label 'process_low'
+    label 'process_medium'
 
     conda "conda-forge::r-tidyverse=2.0.0"
     container "${ workflow.containerEngine == 'docker' ? 'arcadiascience/tidy-prehgt:2.0.0':
