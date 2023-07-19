@@ -191,14 +191,14 @@ results <- run_hgtfinder(df, filter_pvalues = padj_threshold)
 
 # write empty file if no predicted HGT events -----------------------------
 if(nrow(results) == 0){
-  empty_results <- data.frame(qseqid, hgt_taxonomy_level = taxonomy_level, acceptor_lineage_at_hgt_taxonomy_level,
-                              acceptor_lca_level, acceptor_best_nonself_match_id,
-                              acceptor_max_pident, acceptor_max_bitscore, acceptor_min_evalue,
-                              acceptor_num_matches_at_lineage, donor_num_matches_at_lineage, total_num_matches,
-                              donor_lineage_at_hgt_taxonomy_level, donor_num_matches_at_lineage,
-                              donor_best_match_full_lineage, donor_best_match_id, donor_best_match_pident,
-                              donor_max_bitscore, donor_min_evalue, transfer_index, transfer_index_p_value = p_value,
-                              transfer_index_adjusted_p_value = adjusted_p_value)
+  empty_results <- data.frame("qseqid", "hgt_taxonomy_level", "acceptor_lineage_at_hgt_taxonomy_level",
+                              "acceptor_lca_level", "acceptor_best_nonself_match_id",
+                              "acceptor_max_pident", "acceptor_max_bitscore", "acceptor_min_evalue",
+                              "acceptor_num_matches_at_lineage", "donor_num_matches_at_lineage", "total_num_matches",
+                              "donor_lineage_at_hgt_taxonomy_level", "donor_num_matches_at_lineage",
+                              "donor_best_match_full_lineage", "donor_best_match_id", "donor_best_match_pident",
+                              "donor_max_bitscore", "donor_min_evalue", "transfer_index", "transfer_index_p_value",
+                              "transfer_index_adjusted_p_value")
 
   write_tsv(empty_results, blast_hgt_out)
   write_tsv(empty[ , 1], gene_lst_out, col_names = FALSE)
