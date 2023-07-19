@@ -189,118 +189,132 @@ report_lineage_at_hgt_taxonomy_level <- function(lineage, taxonomy_level){
 
 results <- run_hgtfinder(df, filter_pvalues = padj_threshold)
 
-# format results and write TSV --------------------------------------------
+# write empty file if no predicted HGT events -----------------------------
+if(nrow(results) == 0){
+  empty_results <- data.frame(qseqid, hgt_taxonomy_level = taxonomy_level, acceptor_lineage_at_hgt_taxonomy_level,
+                              acceptor_lca_level, acceptor_best_nonself_match_id,
+                              acceptor_max_pident, acceptor_max_bitscore, acceptor_min_evalue,
+                              acceptor_num_matches_at_lineage, donor_num_matches_at_lineage, total_num_matches,
+                              donor_lineage_at_hgt_taxonomy_level, donor_num_matches_at_lineage,
+                              donor_best_match_full_lineage, donor_best_match_id, donor_best_match_pident,
+                              donor_max_bitscore, donor_min_evalue, transfer_index, transfer_index_p_value = p_value,
+                              transfer_index_adjusted_p_value = adjusted_p_value)
 
-# select the highest taxonomic level that something is seen at
-# e.g., it's HGT at kingdom, the highest level is kingdom
-results_best_tax <- results %>%
-  group_by(qseqid) %>%
-  # this arranges things so that for each qseqid, kingdom will be at top, then phylum, then class, order, family.
-  arrange(factor(taxonomy_level, levels = c("kingdom", "phylum", "class", "order", "family"))) %>%
-  # take only the top hit
-  slice_head(n = 1)
+  write_tsv(empty_results, blast_hgt_out)
+  write_tsv(empty[ , 1], gene_lst_out, col_names = FALSE)
+} else {
+  # format results and write TSV --------------------------------------------
+  
+  # select the highest taxonomic level that something is seen at
+  # e.g., it's HGT at kingdom, the highest level is kingdom
+  results_best_tax <- results %>%
+    group_by(qseqid) %>%
+    # this arranges things so that for each qseqid, kingdom will be at top, then phylum, then class, order, family.
+    arrange(factor(taxonomy_level, levels = c("kingdom", "phylum", "class", "order", "family"))) %>%
+    # take only the top hit
+    slice_head(n = 1)
+  
+  # identify the best non-self hit for each HGT candidate
+  qlineage <- set_qlineage(df = df, taxonomy_level = "family") # set the query lineage for the given set of BLAST results
+  tax_dist_df <- data.frame(taxonomic_distance = c(0, 1/6, 2/6, 3/6, 4/6, 5/6, 6/6),
+                            taxonomy_level = c("self", "family", "order", "class", "phylum", "kingdom", "kingdom")) # make a data frame of results
+  top_hits_all_tax_levels <- df %>%
+    filter(qseqid %in% results$qseqid) %>%            # only look at the queries that are in the results
+    calc_taxonomic_distance(qlineage = qlineage) %>%  # calculates the taxonomic distance for each BLAST match, using a family level qlineage
+    left_join(tax_dist_df, by = "taxonomic_distance") # join with the taxonomy label information
+  
+  top_hits_donor <- top_hits_all_tax_levels %>%
+    group_by(qseqid, taxonomy_level) %>%         # select the highest bitscore match for each group
+    arrange(desc(corrected_bitscore)) %>%
+    slice_head(n = 1) %>%
+    rowwise() %>%
+    mutate(donor_best_match_full_lineage = paste(superkingdom, kingdom, phylum, class, order, family, genus, species, sep = ";")) %>%
+    ungroup() %>%
+    select(qseqid, donor_max_bitscore = corrected_bitscore, donor_min_evalue = evalue,
+           donor_best_match_pident = pident, donor_best_match_full_lineage, taxonomy_level,
+           donor_best_match_id = sseqid)
+  
+  # join results to best hit at given taxonomic level & report in a tsv file
+  results_best_tax_formatted1 <- left_join(results_best_tax, top_hits_donor, by = c("qseqid", "taxonomy_level")) %>%
+    rowwise() %>%
+    mutate(donor_lineage_at_hgt_taxonomy_level = report_lineage_at_hgt_taxonomy_level(lineage = donor_best_match_full_lineage,
+                                                                                      taxonomy_level = taxonomy_level))
+  
+  # get acceptor information ------------------------------------------------
+  
+  qlineage <- gsub("; ", ";", qlineage)
+  blast_tmp <-  blast %>%
+    # filter self hits so acceptor max scores are the same as in the kingdom script
+    filter(!str_detect(string = qseqid, pattern = sseqid)) %>%
+    # filter to HGT candidates
+    filter(qseqid %in% results_best_tax$qseqid) %>%
+    # join with HGT taxonomy level
+    left_join(results_best_tax) %>%
+    rowwise() %>%
+    # calculate lineage information
+    mutate(slineage = paste(c(superkingdom, kingdom, phylum, class, order, family, genus), collapse = "; "),
+           lineage_at_hgt_taxonomy_level = report_lineage_at_hgt_taxonomy_level(lineage = slineage, taxonomy_level = taxonomy_level))
+  
+  # filter to hits that match at the correct taxonomic lineage (this will include unclassified hits that were removed before HGT calculation)
+  acceptor_tmp <- blast_tmp %>%
+    filter(grepl(pattern = lineage_at_hgt_taxonomy_level, x = qlineage))
+  
+  # pull top hit information within the acceptor group
+  acceptor_top_stats <- acceptor_tmp %>%
+    group_by(qseqid) %>%
+    arrange(desc(corrected_bitscore)) %>%
+    slice_head(n = 1) %>%
+    ungroup() %>%
+    select(qseqid, acceptor_max_bitscore = corrected_bitscore, acceptor_min_evalue = evalue,
+           acceptor_max_pident = pident, acceptor_lineage_at_hgt_taxonomy_level = lineage_at_hgt_taxonomy_level,
+           acceptor_best_nonself_match_id = sseqid)
+  
+  # calculate the number of hits that have the acceptor lineage at the hgt taxonomy level
+  acceptor_num_hits <- acceptor_tmp %>%
+    group_by(qseqid, lineage_at_hgt_taxonomy_level) %>%
+    tally() %>%
+    select(qseqid, acceptor_lineage_at_hgt_taxonomy_level = lineage_at_hgt_taxonomy_level,
+           acceptor_num_matches_at_lineage = n)
+  
+  # from the acceptor group, calculate how wide spread the protein is among other genomes in the acceptor group
+  acceptor_lca <- acceptor_tmp %>%
+    lca()
+  
+  # combine the information together
+  acceptor_information <- left_join(acceptor_top_stats, acceptor_num_hits) %>%
+    left_join(acceptor_lca)
+  
+  # get donor number of hits ------------------------------------------------
+  
+  donor_num_hits <- blast_tmp %>%
+    left_join(results_best_tax_formatted1) %>%
+    filter(lineage_at_hgt_taxonomy_level == donor_lineage_at_hgt_taxonomy_level) %>%
+    group_by(qseqid, donor_lineage_at_hgt_taxonomy_level) %>%
+    tally() %>%
+    select(qseqid, donor_lineage_at_hgt_taxonomy_level, donor_num_matches_at_lineage = n)
+  
+  # get total number of hits ------------------------------------------------
+  
+  num_hits_per_qseqid <- blast_tmp %>%
+    group_by(qseqid) %>%
+    tally() %>%
+    select(qseqid, total_num_matches = n)
+  
+  # combine and write -------------------------------------------------------
+  
+  results_best_tax_formatted <- results_best_tax_formatted1 %>%
+    left_join(acceptor_information) %>%
+    left_join(num_hits_per_qseqid) %>%
+    left_join(donor_num_hits) %>%
+    select(qseqid, hgt_taxonomy_level = taxonomy_level, acceptor_lineage_at_hgt_taxonomy_level,
+           acceptor_lca_level, acceptor_best_nonself_match_id,
+           acceptor_max_pident, acceptor_max_bitscore, acceptor_min_evalue,
+           acceptor_num_matches_at_lineage, donor_num_matches_at_lineage, total_num_matches,
+           donor_lineage_at_hgt_taxonomy_level, donor_num_matches_at_lineage,
+           donor_best_match_full_lineage, donor_best_match_id, donor_best_match_pident,
+           donor_max_bitscore, donor_min_evalue, transfer_index, transfer_index_p_value = p_value,
+           transfer_index_adjusted_p_value = adjusted_p_value)
 
-# identify the best non-self hit for each HGT candidate
-qlineage <- set_qlineage(df = df, taxonomy_level = "family") # set the query lineage for the given set of BLAST results
-tax_dist_df <- data.frame(taxonomic_distance = c(0, 1/6, 2/6, 3/6, 4/6, 5/6, 6/6),
-                          taxonomy_level = c("self", "family", "order", "class", "phylum", "kingdom", "kingdom")) # make a data frame of results
-top_hits_all_tax_levels <- df %>%
-  filter(qseqid %in% results$qseqid) %>%            # only look at the queries that are in the results
-  calc_taxonomic_distance(qlineage = qlineage) %>%  # calculates the taxonomic distance for each BLAST match, using a family level qlineage
-  left_join(tax_dist_df, by = "taxonomic_distance") # join with the taxonomy label information
-
-top_hits_donor <- top_hits_all_tax_levels %>%
-  group_by(qseqid, taxonomy_level) %>%         # select the highest bitscore match for each group
-  arrange(desc(corrected_bitscore)) %>%
-  slice_head(n = 1) %>%
-  rowwise() %>%
-  mutate(donor_best_match_full_lineage = paste(superkingdom, kingdom, phylum, class, order, family, genus, species, sep = ";")) %>%
-  ungroup() %>%
-  select(qseqid, donor_max_bitscore = corrected_bitscore, donor_min_evalue = evalue,
-         donor_best_match_pident = pident, donor_best_match_full_lineage, taxonomy_level,
-         donor_best_match_id = sseqid)
-
-# join results to best hit at given taxonomic level & report in a tsv file
-results_best_tax_formatted1 <- left_join(results_best_tax, top_hits_donor, by = c("qseqid", "taxonomy_level")) %>%
-  rowwise() %>%
-  mutate(donor_lineage_at_hgt_taxonomy_level = report_lineage_at_hgt_taxonomy_level(lineage = donor_best_match_full_lineage,
-                                                                                    taxonomy_level = taxonomy_level))
-
-# get acceptor information ------------------------------------------------
-
-qlineage <- gsub("; ", ";", qlineage)
-blast_tmp <-  blast %>%
-  # filter self hits so acceptor max scores are the same as in the kingdom script
-  filter(!str_detect(string = qseqid, pattern = sseqid)) %>%
-  # filter to HGT candidates
-  filter(qseqid %in% results_best_tax$qseqid) %>%
-  # join with HGT taxonomy level
-  left_join(results_best_tax) %>%
-  rowwise() %>%
-  # calculate lineage information
-  mutate(slineage = paste(c(superkingdom, kingdom, phylum, class, order, family, genus), collapse = "; "), 
-         lineage_at_hgt_taxonomy_level = report_lineage_at_hgt_taxonomy_level(lineage = slineage, taxonomy_level = taxonomy_level)) 
-
-# filter to hits that match at the correct taxonomic lineage (this will include unclassified hits that were removed before HGT calculation)
-acceptor_tmp <- blast_tmp %>%
-  filter(grepl(pattern = lineage_at_hgt_taxonomy_level, x = qlineage)) 
-
-# pull top hit information within the acceptor group
-acceptor_top_stats <- acceptor_tmp %>%
-  group_by(qseqid) %>%
-  arrange(desc(corrected_bitscore)) %>%
-  slice_head(n = 1) %>%
-  ungroup() %>%
-  select(qseqid, acceptor_max_bitscore = corrected_bitscore, acceptor_min_evalue = evalue,
-         acceptor_max_pident = pident, acceptor_lineage_at_hgt_taxonomy_level = lineage_at_hgt_taxonomy_level,
-         acceptor_best_nonself_match_id = sseqid)
-
-# calculate the number of hits that have the acceptor lineage at the hgt taxonomy level
-acceptor_num_hits <- acceptor_tmp %>%
-  group_by(qseqid, lineage_at_hgt_taxonomy_level) %>%
-  tally() %>%
-  select(qseqid, acceptor_lineage_at_hgt_taxonomy_level = lineage_at_hgt_taxonomy_level, 
-         acceptor_num_matches_at_lineage = n)
-
-# from the acceptor group, calculate how wide spread the protein is among other genomes in the acceptor group
-acceptor_lca <- acceptor_tmp %>% 
-  lca()
-
-# combine the information together
-acceptor_information <- left_join(acceptor_top_stats, acceptor_num_hits) %>%
-  left_join(acceptor_lca)
-
-# get donor number of hits ------------------------------------------------
-
-donor_num_hits <- blast_tmp %>%
-  left_join(results_best_tax_formatted1) %>%
-  filter(lineage_at_hgt_taxonomy_level == donor_lineage_at_hgt_taxonomy_level) %>%
-  group_by(qseqid, donor_lineage_at_hgt_taxonomy_level) %>%
-  tally() %>%
-  select(qseqid, donor_lineage_at_hgt_taxonomy_level, donor_num_matches_at_lineage = n)
-
-# get total number of hits ------------------------------------------------
-
-num_hits_per_qseqid <- blast_tmp %>%
-  group_by(qseqid) %>%
-  tally() %>%
-  select(qseqid, total_num_matches = n)
-
-# combine and write -------------------------------------------------------
-
-results_best_tax_formatted <- results_best_tax_formatted1 %>%
-  left_join(acceptor_information) %>%
-  left_join(num_hits_per_qseqid) %>%
-  left_join(donor_num_hits) %>%
-  select(qseqid, hgt_taxonomy_level = taxonomy_level, acceptor_lineage_at_hgt_taxonomy_level, 
-         acceptor_lca_level, acceptor_best_nonself_match_id,
-         acceptor_max_pident, acceptor_max_bitscore, acceptor_min_evalue,
-         acceptor_num_matches_at_lineage, donor_num_matches_at_lineage, total_num_matches,
-         donor_lineage_at_hgt_taxonomy_level, donor_num_matches_at_lineage,
-         donor_best_match_full_lineage, donor_best_match_id, donor_best_match_pident,
-         donor_max_bitscore, donor_min_evalue, transfer_index, transfer_index_p_value = p_value, 
-         transfer_index_adjusted_p_value = adjusted_p_value)
-         #acceptor_sum_bitscore_per_group_01, donor_sum_bitscore_per_group_01, ahs_01_index)
-
-write_tsv(results_best_tax_formatted, blast_hgt_out)
-write_tsv(results_best_tax_formatted[ , 1], gene_lst_out, col_names = FALSE)
+  write_tsv(results_best_tax_formatted, blast_hgt_out)
+  write_tsv(results_best_tax_formatted[ , 1], gene_lst_out, col_names = FALSE)
+}
