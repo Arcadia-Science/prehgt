@@ -214,7 +214,7 @@ if(nrow(results) == 0){
                               transfer_index_adjusted_p_value = numeric())
 
   write_tsv(empty_results, blast_hgt_out)
-  write_tsv(empty[ , 1], gene_lst_out, col_names = FALSE)
+  file.create(gene_lst_out)
 } else {
   # format results and write TSV --------------------------------------------
   
