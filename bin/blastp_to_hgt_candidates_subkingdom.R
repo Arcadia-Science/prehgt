@@ -191,14 +191,27 @@ results <- run_hgtfinder(df, filter_pvalues = padj_threshold)
 
 # write empty file if no predicted HGT events -----------------------------
 if(nrow(results) == 0){
-  empty_results <- data.frame("qseqid", "hgt_taxonomy_level", "acceptor_lineage_at_hgt_taxonomy_level",
-                              "acceptor_lca_level", "acceptor_best_nonself_match_id",
-                              "acceptor_max_pident", "acceptor_max_bitscore", "acceptor_min_evalue",
-                              "acceptor_num_matches_at_lineage", "donor_num_matches_at_lineage", "total_num_matches",
-                              "donor_lineage_at_hgt_taxonomy_level", "donor_num_matches_at_lineage",
-                              "donor_best_match_full_lineage", "donor_best_match_id", "donor_best_match_pident",
-                              "donor_max_bitscore", "donor_min_evalue", "transfer_index", "transfer_index_p_value",
-                              "transfer_index_adjusted_p_value")
+  empty_results <- data.frame(qseqid = character(),
+                              hgt_taxonomy_level = character(),
+                              acceptor_lineage_at_hgt_taxonomy_level = character(),
+                              acceptor_lca_level = character(),
+                              acceptor_best_nonself_match_id = character(),
+                              acceptor_max_pident = numeric(),
+                              acceptor_max_bitscore = numeric(),
+                              acceptor_min_evalue = numeric(),
+                              acceptor_num_matches_at_lineage = numeric(),
+                              donor_num_matches_at_lineage = numeric(),
+                              total_num_matches = numeric(),
+                              donor_lineage_at_hgt_taxonomy_level = character(),
+                              donor_num_matches_at_lineage = numeric(),
+                              donor_best_match_full_lineage = character(),
+                              donor_best_match_id = character(),
+                              donor_best_match_pident = numeric(),
+                              donor_max_bitscore = numeric(),
+                              donor_min_evalue = numeric(),
+                              transfer_index = numeric(),
+                              transfer_index_p_value = numeric(),
+                              transfer_index_adjusted_p_value = numeric())
 
   write_tsv(empty_results, blast_hgt_out)
   write_tsv(empty[ , 1], gene_lst_out, col_names = FALSE)
