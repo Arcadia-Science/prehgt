@@ -163,26 +163,38 @@ return_blast_files_with_results <- function(files){
 }
 
 #blast_kingdom_tsv <- "~/github/prehgt/out_test/blastp/Bigelowiella_blastp_scores.tsv"
-blast_kingdom <- return_blast_files_with_results(blast_kingdom_tsv) %>%
-  set_names() %>%
-  map_dfr(read_blast_hgt_candidates_kingdom, .id = "genus") %>%
-  rename_with( ~ paste0("blast_", .x)) %>%
-  rename(hgt_candidate = blast_qseqid, genus = blast_genus) %>%
-  mutate(genus = gsub("_blastp_kingdom_scores.tsv", "", basename(genus))) %>%
-  distinct() %>%
-  mutate(blast_algorithm_type = "kingdom", .after = hgt_candidate)
+blast_kingdom <- return_blast_files_with_results(blast_kingdom_tsv)
+if(length(blast_kingdom) > 0){
+  blast_kingdom <- blast_kingdom %>%
+    set_names() %>%
+    map_dfr(read_blast_hgt_candidates_kingdom, .id = "genus") %>%
+    rename_with( ~ paste0("blast_", .x)) %>%
+    rename(hgt_candidate = blast_qseqid, genus = blast_genus) %>%
+    mutate(genus = gsub("_blastp_kingdom_scores.tsv", "", basename(genus))) %>%
+    distinct() %>%
+    mutate(blast_algorithm_type = "kingdom", .after = hgt_candidate)
+}
 
-blast_subkingdom <- return_blast_files_with_results(blast_subkingdom_tsv) %>%
-  set_names() %>%
-  map_dfr(read_blast_hgt_candidates_subkingdom, .id = "genus") %>%
-  rename_with( ~ paste0("blast_", .x)) %>%
-  rename(hgt_candidate = blast_qseqid, genus = blast_genus) %>%
-  mutate(genus = gsub("_blastp_subkingdom_scores.tsv", "", basename(genus))) %>%
-  distinct() %>%
-  mutate(blast_algorithm_type = "sub-kingdom", .after = hgt_candidate)
+blast_subkingdom <- return_blast_files_with_results(blast_subkingdom_tsv)
+if(length(blast_subkingdom) > 0){
+  blast_subkingdom <- blast_subkingdom %>%
+    set_names() %>%
+    map_dfr(read_blast_hgt_candidates_subkingdom, .id = "genus") %>%
+    rename_with( ~ paste0("blast_", .x)) %>%
+    rename(hgt_candidate = blast_qseqid, genus = blast_genus) %>%
+    mutate(genus = gsub("_blastp_subkingdom_scores.tsv", "", basename(genus))) %>%
+    distinct() %>%
+    mutate(blast_algorithm_type = "sub-kingdom", .after = hgt_candidate)
+  
+}
 
-blast <- bind_rows(blast_kingdom, blast_subkingdom)
-
+if(!is.null(nrow(blast_kingdom)) & !is.null(nrow(blast_subkingdom))){
+  blast <- bind_rows(blast_kingdom, blast_subkingdom)
+} else if(!is.null(nrow(blast_kingdom))){
+  blast <- blast_kingdom
+} else {
+  blast <- blast_subkingdom
+}
 # read in and parse pangenome information ---------------------------------
 
 pangenome_size <- genomes_csv %>%
