@@ -58,7 +58,7 @@ checkpoint download_reference_genomes:
     # accessions that vary only by GCA_* or GCF_*, where GCF_* files are from RefSeq.
     # delete_gca_files.sh deletes GCA_* files only when there is a corresponding GCF_ file.
     cd ./inputs/genbank/{wildcards.genus}
-    ./bin/delete_gca_files.sh
+    ../../../bin/delete_gca_files.sh
     cd ../../../
 
     # combine & unzip all genus-level gene sequences
