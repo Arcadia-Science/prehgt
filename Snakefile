@@ -31,6 +31,9 @@ checkpoint download_reference_genomes:
     conda: "envs/ncbi-genome-download.yml"
     params: outdir= lambda wildcards: "inputs/genbank/" + wildcards.genus
     benchmark: "benchmarks/download_reference_genomes/{genus}.tsv"
+    resources:
+        mem_mb=6 * 1000
+    threads: 1
     shell:'''
     # don't exit immediately if we get an exit 1, keep running the script.
     set +e
@@ -74,9 +77,9 @@ checkpoint download_reference_genomes:
 
 def checkpoint_download_reference_genomes(wildcards):
     # solve for gff file paths
-    checkpoint_output = checkpoints.download_reference_genomes.get(**wildcards).output[0] # grab output directory name 
-    file_names = expand("inputs/genbank/{{genus}}/{accession}_genomic.gff.gz",
-                        accession = glob_wildcards(os.path.join(checkpoint_output, "{accession}_genomic.gff.gz")).accession)
+    checkpoint_output = checkpoints.download_reference_genomes.get(**wildcards).output[0]  # grab output directory name
+    gff_file_patterns = os.path.join(checkpoint_output, "{accession}_genomic.gff.gz")
+    file_names = expand(gff_file_patterns, accession=glob_wildcards(gff_file_patterns).accession)
     return file_names
 
 
@@ -89,6 +92,9 @@ rule combine_and_parse_gff_per_genus:
     output: gff = "outputs/genus_pangenome_raw/{genus}_gff_info.tsv"
     benchmark: "benchmarks/combine_gff_per_genus/{genus}.tsv"
     conda: "envs/tidy-prehgt.yml"
+    resources:
+        mem_mb=36 * 1000
+    threads: 6
     shell:'''
     bin/combine_and_parse_gff_per_genus.R {output} {input}
     '''
@@ -109,6 +115,9 @@ rule build_genus_pangenome:
     conda: "envs/mmseqs2.yml"
     benchmark:"benchmarks/genus_pangenome/{genus}.tsv"
     params: outprefix = lambda wildcards: "outputs/genus_pangenome_clustered/" + wildcards.genus + "_cds"
+    resources:
+        mem_mb=36 * 1000
+    threads: 6
     shell:'''
     mmseqs easy-cluster {input} {params.outprefix} tmp_mmseqs2 --min-seq-id 0.9
     '''
@@ -121,6 +130,9 @@ rule translate_pangenome:
     output: "outputs/genus_pangenome_clustered/{genus}_aa_rep_seq.fasta"
     conda: "envs/emboss.yml"
     benchmark: "benchmarks/translate_pangenome/{genus}.tsv"
+    resources:
+        mem_mb=6 * 1000
+    threads: 1
     shell:'''
     transeq -sequence {input} -outseq {output}
     '''
@@ -137,6 +149,9 @@ rule compositional_scans_pepstats:
     output: 'outputs/compositional_scans_pepstats/{genus}_pepstats.txt'
     conda: "envs/emboss.yml"
     benchmark: "benchmarks/compositional_scans_pepstats/{genus}.tsv"
+    resources:
+        mem_mb=12 * 1000
+    threads: 2
     shell:'''
     pepstats -sequence {input} -outfile {output}
     '''
@@ -152,6 +167,9 @@ rule compositional_scans_to_hgt_candidates:
         gene_lst="outputs/compositional_scans_hgt_candidates/{genus}_pepstats_gene_lst.txt"
     benchmark: "benchmarks/compositional_scans_to_hgt_candidates/{genus}.tsv"
     conda: "envs/tidy-prehgt.yml"
+    resources:
+        mem_mb=200 * 1000
+    threads: 30
     shell:'''
     bin/compositional_scans_to_hgt_candidates.R {input.raau} {output.tsv} {output.gene_lst}
     '''
@@ -172,6 +190,8 @@ rule blast_against_clustered_nr:
     output: "outputs/blast_diamond/{genus}_vs_clustered_nr.tsv"
     conda: "envs/diamond.yml"
     benchmark: "benchmarks/blast_against_clustered_nr/{genus}.tsv"
+    resources:
+        mem_mb=32 * 1000
     threads: 16
     shell:'''
     diamond blastp --db {input.db} --query {input.query} --out {output} \
@@ -191,6 +211,9 @@ rule blast_add_taxonomy_info:
     output: tsv="outputs/blast_diamond/{genus}_vs_clustered_nr_lineages.tsv"
     conda: "envs/tidy-prehgt.yml"
     benchmark: "benchmarks/blast_add_taxonomy_info/{genus}.tsv"
+    resources:
+        mem_mb=36 * 1000
+    threads: 6
     shell:'''
     bin/blastp_add_taxonomy_info.R {input.sqldb} {input.tsv} {output.tsv}
     '''
@@ -205,6 +228,9 @@ rule blast_to_hgt_candidates_kingdom:
         gene_lst="outputs/blast_hgt_candidates/{genus}_blastp_kingdom_gene_lst.txt",
         tsv="outputs/blast_hgt_candidates/{genus}_blastp_kingdom_scores.tsv"
     conda: "envs/tidy-prehgt.yml"
+    resources:
+        mem_mb=12 * 1000
+    threads: 2
     benchmark: "benchmarks/blast_to_hgt_candidates_kingdom/{genus}.tsv"
     shell:'''
     bin/blastp_to_hgt_candidates_kingdom.R {input.tsv} {output.tsv} {output.gene_lst}
@@ -220,6 +246,9 @@ rule blast_to_hgt_candidates_subkingdom:
         gene_lst="outputs/blast_hgt_candidates/{genus}_blastp_subkingdom_gene_lst.txt",
         tsv="outputs/blast_hgt_candidates/{genus}_blastp_subkingdom_scores.tsv"
     conda: "envs/tidy-prehgt.yml"
+    resources:
+        mem_mb=36 * 1000
+    threads: 6
     benchmark: "benchmarks/blast_to_hgt_candidates_subkingdom/{genus}.tsv"
     shell:'''
     bin/blastp_to_hgt_candidates_subkingdom.R {input.tsv} 0.01 {output.tsv} {output.gene_lst}
@@ -244,6 +273,9 @@ rule combine_hgt_candidates:
        "outputs/compositional_scans_hgt_candidates/{genus}_pepstats_gene_lst.txt"
     output: "outputs/hgt_candidates/{genus}_gene_lst.txt"
     conda: "envs/csvtk.yml"
+    resources:
+        mem_mb=6 * 1000
+    threads: 1
     shell:'''
     cat {input} | csvtk freq -H -f 1 | csvtk cut -f 1 -o {output}
     '''
@@ -259,6 +291,9 @@ rule extract_hgt_candidates:
     output: "outputs/hgt_candidates/{genus}_aa.fasta"
     benchmark: "benchmarks/extract_hgt_candidates/{genus}.tsv"
     conda: "envs/seqtk.yml"
+    resources:
+        mem_mb=6 * 1000
+    threads: 1
     shell:'''
     seqtk subseq {input.fa} {input.gene_lst} > {output}
     '''
@@ -269,6 +304,9 @@ rule download_kofamscan_ko_list:
     """
     output: "inputs/kofamscandb/ko_list"
     params: outdir = "inputs/kofamscandb/"
+    resources:
+        mem_mb=6 * 1000
+    threads: 1
     shell:'''
     curl -JLo {output}.gz ftp://ftp.genome.jp/pub/db/kofam/ko_list.gz && gunzip -c {output}.gz > {output}
     '''
@@ -279,6 +317,9 @@ rule download_kofamscan_profiles:
     """
     output: "inputs/kofamscandb/profiles/prokaryote.hal"
     params: outdir = "inputs/kofamscandb/"
+    resources:
+        mem_mb=6 * 1000
+    threads: 1
     shell:'''
     curl -JLo {params.outdir}/profiles.tar.gz ftp://ftp.genome.jp/pub/db/kofam/profiles.tar.gz && tar xf {params.outdir}/profiles.tar.gz -C {params.outdir}
     '''
@@ -294,7 +335,9 @@ rule kofamscan_hgt_candidates:
     output: "outputs/hgt_candidates_annotation/kofamscan/{genus}_kofamscan.tsv"
     conda: "envs/kofamscan.yml"
     params: profilesdir = "inputs/kofamscandb/profiles"
-    threads: 8
+    resources:
+        mem_mb=32 * 1000
+    threads: 16
     benchmark: "benchmarks/kofamscan_hgt_candidates/{genus}.tsv"
     shell:'''
     mkdir -p tmp
@@ -305,6 +348,9 @@ rule hmmpress:
     input: "inputs/hmms/all_hmms.hmm",
     output: "inputs/hmms/all_hmms.hmm.h3i"
     conda: "envs/hmmer.yml"
+    resources:
+        mem_mb=32 * 1000
+    threads: 16
     shell:'''
     hmmpress {input}
     '''
@@ -322,7 +368,9 @@ rule hmmscan_hgt_candidates:
         tblout="outputs/hgt_candidates_annotation/hmmscan/{genus}.tblout",
         out="outputs/hgt_candidates_annotation/hmmscan/{genus}.out"
     conda: "envs/hmmer.yml"
-    threads: 8
+    resources:
+        mem_mb=32 * 1000
+    threads: 16
     benchmark: "benchmarks/hmmscan_hgt_candidates/{genus}.tsv"
     shell:'''
     hmmscan --cpu {threads} --tblout {output.tblout} -o {output.out} {input.hmmdb} {input.fa}
@@ -350,6 +398,9 @@ rule combine_results_genus:
         all_results = "outputs/hgt_candidates_final/{genus}_results.tsv",
         method_tally = "outputs/hgt_candidates_final/{genus}_method_tally.tsv"
     conda: "envs/tidy-prehgt.yml"
+    resources:
+        mem_mb=12 * 1000
+    threads: 2
     shell:'''
     bin/combine_results_genus.R {input.compositional} {input.blast_kingdom} {input.blast_subkingdom} {input.genome_csv} {input.pangenome_cluster} {input.gff} {input.kofamscan} {input.hmmscan} {output.all_results} {output.method_tally}
     '''
@@ -358,6 +409,9 @@ rule combine_results:
     input: expand("outputs/hgt_candidates_final/{genus}_results.tsv", genus = GENUS)
     output: "outputs/final_results/all_results.tsv"
     conda: "envs/tidy-prehgt.yml"
+    resources:
+        mem_mb=12 * 1000
+    threads: 2
     shell:'''
     bin/combine_results.R {output} {input}
     '''
