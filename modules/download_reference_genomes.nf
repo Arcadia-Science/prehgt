@@ -33,7 +33,7 @@ process download_reference_genomes {
     # genbank is separate from refseq, so run twice
     for section in genbank refseq
     do
-        ncbi-genome-download vertebrate_mammalian,vertebrate_other,invertebrate,plant,fungi,protozoa --output-folder ./ --flat-output --genera ${prefix} -F gff,cds-fasta -s \$section --dry-run
+        ncbi-genome-download vertebrate_mammalian,vertebrate_other,invertebrate,plant,fungi,protozoa,bacteria --output-folder ./ --flat-output --genera ${prefix} -F gff,cds-fasta -s \$section --dry-run
         exit_code=\$?
         # if this gives an exit code 1 (ERROR: No downloads matched your filter. Please check your options.), skip that section as there are no outputs
         if [ \$exit_code -eq 1 ]; then
@@ -41,7 +41,7 @@ process download_reference_genomes {
             (exit 0) # reset exit code. failing the dry run is not problematic
         # otherwise, do the download and get the genomes!
         else
-            ncbi-genome-download vertebrate_mammalian,vertebrate_other,invertebrate,plant,fungi,protozoa --output-folder ./ --flat-output --genera ${prefix} -F gff,cds-fasta -s \$section --retries 3
+            ncbi-genome-download vertebrate_mammalian,vertebrate_other,invertebrate,plant,fungi,protozoa,bacteria --output-folder ./ --flat-output --genera ${prefix} -F gff,cds-fasta -s \$section --retries 3
         fi
     done
 
