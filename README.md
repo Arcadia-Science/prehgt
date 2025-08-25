@@ -31,9 +31,9 @@ The download code below reflects the relative paths of the databases where the s
 
 ```
 mkdir -p inputs/
-curl -JLo inputs/nr_rep_seq.fasta.gz https://osf.io/gqxva/download # 59Gb BLASTp database
-curl -JLo inputs/nr_cluster_taxid_formatted_final.sqlite https://osf.io/5qj7e/download # 66Gb BLASTp taxonomy database
-curl -JLo inputs/hmms/all_hmms.hmm https://osf.io/f92qd/download # 3.2Gb HMM database
+curl -JLo inputs/nr_rep_seq.fasta.gz https://zenodo.org/records/16930264/files/nr_rep_seq.fasta.gz?download=1 # 59Gb BLASTp database
+curl -JLo inputs/nr_cluster_taxid_formatted_final.sqlite https://zenodo.org/records/16930264/files/nr_cluster_taxid_formatted_final.sqlite?download=1 # 66Gb BLASTp taxonomy database
+curl -JLo inputs/hmms/all_hmms.hmm https://zenodo.org/records/16930264/files/all_hmms.hmm?download=1 # 3.2Gb HMM database
 ```
 
 If you're using Nextflow, you will also need the KofamScan databases (these are automatically downloaded by the Snakemake pipeline)
